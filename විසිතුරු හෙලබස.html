@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>විසිතුරු හෙළ යෙදුම්</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Serif Sinhala', serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ffffff" fill-opacity="0.05" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,144C960,149,1056,139,1152,122.7C1248,107,1344,85,1392,74.7L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
+            background-size: cover;
+            opacity: 0.3;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 30px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 15px 15px 0 0;
+            color: white;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .tab:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: none;
+        }
+
+        .content {
+            background: white;
+            border-radius: 0 0 20px 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .search-box {
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: 'Noto Serif Sinhala', serif;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .results {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .result-item {
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .word {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .meaning {
+            font-size: 1.1em;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+            font-size: 1.2em;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+            font-size: 1.1em;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: white;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .results::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .results::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .results::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .results::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>විසිතුරු හෙළ බස</h1>
+            <p class="subtitle">සිංහල භාෂාවේ අලංකාර යෙදුම් එකතුව</p>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active">විසිතුරු හෙළ බස</div>
+            <a href="sinhaladic.html" class="tab">සිංහල ශබ්දකෝෂය</a>
+        </div>
+
+        <div class="content">
+            <div class="search-box">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="යෙදුමක් හෝ අර්ථයක් සොයන්න..."
+                >
+            </div>
+
+            <div id="results" class="results">
+                <div class="loading">යෙදුම් පූරණය වෙමින්...</div>
+            </div>
+        </div>
+
+        <footer>
+            Copyright © Amila Udawattha
+        </footer>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://uqgzlaxsnknheoerbfus.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxZ3psYXhzbmtuaGVvZXJiZnVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4MDQzMTEsImV4cCI6MjA2MDM4MDMxMX0.O5dNUizqZ5kfwTs0mHLEorqOAqjZFjWakp2Q484MKEk';
+
+        let allWords = [];
+        const resultsDiv = document.getElementById('results');
+        const searchInput = document.getElementById('searchInput');
+
+        async function fetchWords() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/helavisithuru?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('දත්ත ලබා ගැනීමේ දෝෂයකි');
+
+                allWords = await response.json();
+                displayResults(allWords);
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="no-results">දෝෂයකි: ${error.message}</div>`;
+            }
+        }
+
+        function displayResults(words) {
+            if (words.length === 0) {
+                resultsDiv.innerHTML = '<div class="no-results">ප්‍රතිඵල හමු නොවීය</div>';
+                return;
+            }
+
+            const html = words.map(word => `
+                <div class="result-item">
+                    <div class="word">${word.word}</div>
+                    <div class="meaning">${word.meaning}</div>
+                </div>
+            `).join('');
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function searchWords(query) {
+            if (!query.trim()) {
+                displayResults(allWords);
+                return;
+            }
+
+            const lowerQuery = query.toLowerCase();
+            const filtered = allWords.filter(word => 
+                word.word.toLowerCase().includes(lowerQuery) || 
+                word.meaning.toLowerCase().includes(lowerQuery)
+            );
+
+            displayResults(filtered);
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            searchWords(e.target.value);
+        });
+
+        fetchWords();
+    </script>
+</body>
+</html>
