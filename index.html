@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>සිංහල ශබ්දකෝෂය - සම්පූර්ණ අනුවාදය</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Sinhala:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Serif Sinhala', serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .result-word {
+            color: #1e40af;
+            font-weight: bold;
+        }
+
+        .result-meaning {
+            color: #1e40af;
+        }
+
+        .selected-result {
+            background-color: #eff6ff;
+            border-left: 4px solid #1e40af;
+        }
+
+        .table-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+        }
+
+        body.dark-mode .gradient-bg {
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+        }
+
+        body.dark-mode .bg-white {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+
+        body.dark-mode input {
+            background-color: #4a5568;
+            color: #e2e8f0;
+            border-color: #4a5568;
+        }
+
+        body.dark-mode .text-gray-800 {
+            color: #e2e8f0 !important;
+        }
+
+        body.dark-mode .text-gray-700 {
+            color: #cbd5e0 !important;
+        }
+
+        body.dark-mode .text-gray-600 {
+            color: #a0aec0 !important;
+        }
+
+        body.dark-mode .hover\:bg-gray-50:hover {
+            background-color: #374151 !important;
+        }
+
+        body.dark-mode .bg-gray-50 {
+            background-color: #374151;
+        }
+
+        body.dark-mode .bg-gray-100 {
+            background-color: #1f2937;
+        }
+
+        body.dark-mode .border-gray-200 {
+            border-color: #4a5568;
+        }
+
+        .favorite-btn {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .favorite-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .favorite-btn.active {
+            color: #ef4444;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .notification {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const SUPABASE_URL = 'https://uqgzlaxsnknheoerbfus.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxZ3psYXhzbmtuaGVvZXJiZnVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4MDQzMTEsImV4cCI6MjA2MDM4MDMxMX0.O5dNUizqZ5kfwTs0mHLEorqOAqjZFjWakp2Q484MKEk';
+
+        // Icons
+        const SearchIcon = () => (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        );
+
+        const ChevronDownIcon = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+        );
+
+        const HeartIcon = ({ filled }) => (
+            <svg className="w-6 h-6" fill={filled ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+        );
+
+        const MoonIcon = () => (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+        );
+
+        const SunIcon = () => (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+        );
+
+        const WORD_TYPES = [
+            { label: 'නාම පද', search: '(නාම පදයකි.)' },
+            { label: 'ක්‍රියා පද', search: '(ක්‍රියා පදයකි.)' },
+            { label: 'ක්‍රියා විශේෂණ', search: '(ක්‍රියා විශේෂණ පදයකි.)' },
+            { label: 'විශේෂණ පද', search: '(විශේෂණ පදයකි)' },
+            { label: 'කතා ව්‍යවහාරයේ පවතින වචන', search: '(කතා ව්‍යවහාරයේ පවතින වචනයකි.)' },
+            { label: 'විෂයානුබද්ධ පාරිභාෂික', search: '(විෂයානුබද්ධ පාරිභාෂිකයකි)' },
+            { label: 'නාම ප්‍රකෘති', search: '(නාම ප්‍රකෘතියකි.)' },
+            { label: 'බහුවචන නාම පද', search: '(බහු වචන නාම පදයකි.)' },
+            { label: 'රූඪි', search: '(රූඪි.)' },
+            { label: 'කමත් බස', search: '(කමත් බසෙහි හමු වේ)' },
+            { label: 'ධීවර බස', search: '(ධීවර බසෙහි හමු වේ)' },
+            { label: 'නිපාත පද', search: '(නිපාත)' }
+        ];
+
+        const TABLE_COLORS = {
+            'sinhala_words': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'ශබ්දකෝෂය' },
+            'learnX pedia': { bg: 'bg-green-100', text: 'text-green-800', label: 'LearnX' },
+            'helavisithuru': { bg: 'bg-purple-100', text: 'text-purple-800', label: 'හෙළ විසිතුරු' },
+            'Historynt': { bg: 'bg-orange-100', text: 'text-orange-800', label: 'ඉතිහාසය' }
+        };
+
+        function App() {
+            const [search1Term, setSearch1Term] = useState('');
+            const [search1Results, setSearch1Results] = useState([]);
+            const [search1Loading, setSearch1Loading] = useState(false);
+            const [selectedIndex, setSelectedIndex] = useState(-1);
+
+            const [selectedType, setSelectedType] = useState('');
+            const [search2Results, setSearch2Results] = useState([]);
+            const [search2Loading, setSearch2Loading] = useState(false);
+            const [showDropdown, setShowDropdown] = useState(false);
+
+            const [search3Term, setSearch3Term] = useState('');
+            const [search3Results, setSearch3Results] = useState([]);
+            const [search3Loading, setSearch3Loading] = useState(false);
+
+            const [modalOpen, setModalOpen] = useState(false);
+            const [modalContent, setModalContent] = useState({ title: '', content: '' });
+
+            // NEW FEATURES STATE
+            const [favorites, setFavorites] = useState([]);
+            const [showFavorites, setShowFavorites] = useState(false);
+            const [darkMode, setDarkMode] = useState(false);
+            const [wordOfDay, setWordOfDay] = useState(null);
+            const [notification, setNotification] = useState('');
+
+            const dropdownRef = useRef(null);
+            const resultsRef = useRef(null);
+
+            // Load favorites and dark mode from localStorage
+            useEffect(() => {
+                const loadData = () => {
+                    try {
+                        const savedFavorites = localStorage.getItem('sinhala-favorites');
+                        if (savedFavorites) {
+                            setFavorites(JSON.parse(savedFavorites));
+                        }
+                    } catch (err) {
+                        console.log('No favorites found');
+                    }
+
+                    try {
+                        const savedDarkMode = localStorage.getItem('sinhala-darkMode');
+                        if (savedDarkMode) {
+                            const isDark = JSON.parse(savedDarkMode);
+                            setDarkMode(isDark);
+                            if (isDark) {
+                                document.body.classList.add('dark-mode');
+                            }
+                        }
+                    } catch (err) {
+                        console.log('No dark mode setting found');
+                    }
+
+                    loadWordOfDay();
+                };
+                loadData();
+            }, []);
+
+            const loadWordOfDay = () => {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const savedWod = localStorage.getItem('sinhala-wordOfDay');
+                    
+                    if (savedWod) {
+                        const wod = JSON.parse(savedWod);
+                        if (wod.date === today) {
+                            setWordOfDay(wod.word);
+                            return;
+                        }
+                    }
+
+                    // Fetch new word of the day
+                    const randomOffset = Math.floor(Math.random() * 1000);
+                    const url = `${SUPABASE_URL}/rest/v1/sinhala_words?select=id,word,meaning&limit=1&offset=${randomOffset}`;
+                    
+                    fetch(url, {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            const newWod = { ...data[0], source: 'sinhala_words', date: today };
+                            setWordOfDay(newWod);
+                            localStorage.setItem('sinhala-wordOfDay', JSON.stringify(newWod));
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error loading word of day:', err);
+                    });
+                } catch (err) {
+                    console.error('Error loading word of day:', err);
+                }
+            };
+
+            const toggleFavorite = (item) => {
+                const itemKey = `${item.source}-${item.id}`;
+                let newFavorites;
+                
+                if (favorites.some(fav => `${fav.source}-${fav.id}` === itemKey)) {
+                    newFavorites = favorites.filter(fav => `${fav.source}-${fav.id}` !== itemKey);
+                    showNotification('ප්‍රියතමයන්ගෙන් ඉවත් කරන ලදී');
+                } else {
+                    newFavorites = [...favorites, item];
+                    showNotification('ප්‍රියතමයන්ට එක් කරන ලදී ⭐');
+                }
+                
+                setFavorites(newFavorites);
+                localStorage.setItem('sinhala-favorites', JSON.stringify(newFavorites));
+            };
+
+            const isFavorite = (item) => {
+                return favorites.some(fav => `${fav.source}-${fav.id}` === `${item.source}-${item.id}`);
+            };
+
+            const toggleDarkMode = () => {
+                const newMode = !darkMode;
+                setDarkMode(newMode);
+                document.body.classList.toggle('dark-mode');
+                localStorage.setItem('sinhala-darkMode', JSON.stringify(newMode));
+                showNotification(newMode ? '🌙 අඳුරු ආකාරය සක්‍රීයයි' : '☀️ දීප්ත ආකාරය සක්‍රීයයි');
+            };
+
+            const showNotification = (message) => {
+                setNotification(message);
+                setTimeout(() => setNotification(''), 3000);
+            };
+
+            const TABLE_COLUMNS = {
+                'sinhala_words': { word: 'word', meaning: 'meaning' },
+                'learnX pedia': { word: 'word', meaning: 'meaning' },
+                'helavisithuru': { word: 'word', meaning: 'meaning' },
+                'Historynt': { word: 'title', meaning: 'content' }
+            };
+
+            const searchFromTable = async (tableName, term, searchType = 'word') => {
+                try {
+                    const encodedTerm = encodeURIComponent(term);
+                    const encodedTableName = encodeURIComponent(tableName);
+                    const columns = TABLE_COLUMNS[tableName];
+                    
+                    if (!columns) {
+                        console.warn(`Unknown table: ${tableName}`);
+                        return [];
+                    }
+                    
+                    let url;
+                    
+                    if (searchType === 'word') {
+                        url = `${SUPABASE_URL}/rest/v1/${encodedTableName}?select=id,${columns.word},${columns.meaning}&${columns.word}=ilike.*${encodedTerm}*&limit=200&order=${columns.word}.asc`;
+                    } else if (searchType === 'any') {
+                        url = `${SUPABASE_URL}/rest/v1/${encodedTableName}?select=id,${columns.word},${columns.meaning}&or=(${columns.word}.ilike.*${encodedTerm}*,${columns.meaning}.ilike.*${encodedTerm}*)&limit=200&order=${columns.word}.asc`;
+                    }
+                    
+                    const response = await fetch(url, {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const processedResults = [];
+                        const searchLower = term.toLowerCase();
+                        
+                        data.forEach(item => {
+                            const wordValue = item[columns.word];
+                            const meaningValue = item[columns.meaning];
+                            
+                            if (!wordValue || !meaningValue) return;
+                            
+                            let shouldInclude = false;
+                            
+                            if (wordValue.includes(',')) {
+                                const words = wordValue.split(',').map(w => w.trim());
+                                const matchingWords = words.filter(w => 
+                                    w.toLowerCase().startsWith(searchLower)
+                                );
+                                
+                                if (matchingWords.length > 0) {
+                                    shouldInclude = true;
+                                    processedResults.push({
+                                        id: item.id,
+                                        word: wordValue,
+                                        meaning: meaningValue,
+                                        source: tableName,
+                                        matchedWords: matchingWords
+                                    });
+                                }
+                            } else {
+                                if (searchType === 'word') {
+                                    if (wordValue.toLowerCase().startsWith(searchLower)) {
+                                        shouldInclude = true;
+                                    }
+                                } else {
+                                    shouldInclude = true;
+                                }
+                                
+                                if (shouldInclude) {
+                                    processedResults.push({
+                                        id: item.id,
+                                        word: wordValue,
+                                        meaning: meaningValue,
+                                        source: tableName
+                                    });
+                                }
+                            }
+                        });
+                        
+                        return processedResults;
+                    } else {
+                        console.warn(`Table ${tableName} returned status ${response.status}`);
+                        return [];
+                    }
+                } catch (err) {
+                    console.warn(`Error searching ${tableName}:`, err.message);
+                    return [];
+                }
+            };
+
+            const performSearch1 = async (term) => {
+                if (term.length < 2) {
+                    setSearch1Results([]);
+                    setSelectedIndex(-1);
+                    return;
+                }
+
+                setSearch1Loading(true);
+                try {
+                    const [sinhalaDocs, learnXDocs] = await Promise.all([
+                        searchFromTable('sinhala_words', term, 'word'),
+                        searchFromTable('learnX pedia', term, 'word')
+                    ]);
+
+                    const allResults = [...sinhalaDocs, ...learnXDocs];
+                    allResults.sort((a, b) => a.word.localeCompare(b.word, 'si'));
+                    
+                    setSearch1Results(allResults);
+                    
+                    const exactMatchIndex = allResults.findIndex(item => 
+                        item.word.toLowerCase() === term.toLowerCase()
+                    );
+                    
+                    if (exactMatchIndex !== -1) {
+                        setSelectedIndex(exactMatchIndex);
+                    } else if (allResults.length > 0) {
+                        setSelectedIndex(0);
+                    }
+                } catch (err) {
+                    console.error('Search error:', err);
+                } finally {
+                    setSearch1Loading(false);
+                }
+            };
+
+            const performSearch2 = async (typeSearch) => {
+                if (!typeSearch) return;
+
+                setSearch2Loading(true);
+                try {
+                    const encodedTerm = encodeURIComponent(typeSearch);
+                    const url = `${SUPABASE_URL}/rest/v1/sinhala_words?select=id,word,meaning&meaning=ilike.*${encodedTerm}*&limit=100&order=word.asc`;
+                    
+                    const response = await fetch(url, {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        setSearch2Results(data.map(item => ({ ...item, source: 'sinhala_words' })));
+                    }
+                } catch (err) {
+                    console.error('Search error:', err);
+                } finally {
+                    setSearch2Loading(false);
+                }
+            };
+
+            const performSearch3 = async (term) => {
+                if (term.length < 2) {
+                    setSearch3Results([]);
+                    return;
+                }
+
+                setSearch3Loading(true);
+                try {
+                    const [sinhalaResults, learnXResults, helaResults, historyResults] = await Promise.all([
+                        searchFromTable('sinhala_words', term, 'any'),
+                        searchFromTable('learnX pedia', term, 'any'),
+                        searchFromTable('helavisithuru', term, 'any'),
+                        searchFromTable('Historynt', term, 'any')
+                    ]);
+
+                    const allResults = [...sinhalaResults, ...learnXResults, ...helaResults, ...historyResults];
+                    allResults.sort((a, b) => a.word.localeCompare(b.word, 'si'));
+                    
+                    setSearch3Results(allResults);
+                } catch (err) {
+                    console.error('Search error:', err);
+                } finally {
+                    setSearch3Loading(false);
+                }
+            };
+
+            useEffect(() => {
+                const timer = setTimeout(() => {
+                    if (search1Term && search1Term.length >= 2) {
+                        performSearch1(search1Term);
+                    } else {
+                        setSearch1Results([]);
+                        setSelectedIndex(-1);
+                    }
+                }, 300);
+                return () => clearTimeout(timer);
+            }, [search1Term]);
+
+            useEffect(() => {
+                const timer = setTimeout(() => {
+                    if (search3Term && search3Term.length >= 2) {
+                        performSearch3(search3Term);
+                    } else {
+                        setSearch3Results([]);
+                    }
+                }, 300);
+                return () => clearTimeout(timer);
+            }, [search3Term]);
+
+            useEffect(() => {
+                if (selectedIndex >= 0 && resultsRef.current) {
+                    const selectedElement = resultsRef.current.children[selectedIndex];
+                    if (selectedElement) {
+                        selectedElement.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                        });
+                    }
+                }
+            }, [selectedIndex]);
+
+            const handleTypeSelect = (type) => {
+                setSelectedType(type.label);
+                setShowDropdown(false);
+                performSearch2(type.search);
+            };
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                        setShowDropdown(false);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => document.removeEventListener('mousedown', handleClickOutside);
+            }, []);
+
+            const highlightWord = (text, searchTerm) => {
+                if (!searchTerm || !text) return text;
+                
+                if (text.includes(',')) {
+                    const words = text.split(',').map(w => w.trim());
+                    return words.map((word, i) => {
+                        const isMatch = word.toLowerCase().startsWith(searchTerm.toLowerCase());
+                        return (
+                            <span key={i}>
+                                {i > 0 && ', '}
+                                <span style={isMatch ? {color: '#1e40af', fontWeight: 'bold'} : {}}>
+                                    {word}
+                                </span>
+                            </span>
+                        );
+                    });
+                }
+                
+                const regex = new RegExp(`(${searchTerm})`, 'gi');
+                const parts = text.split(regex);
+                
+                return parts.map((part, i) => {
+                    if (part.toLowerCase() === searchTerm.toLowerCase()) {
+                        return <span key={i} style={{color: '#1e40af'}}>{part}</span>;
+                    }
+                    return <span key={i}>{part}</span>;
+                });
+            };
+
+            const extractRelevantSentences = (content, searchTerm, maxSentences = 3) => {
+                if (!content || !searchTerm) return null;
+                
+                const cleanContent = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                const sentences = cleanContent.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0);
+                const searchLower = searchTerm.toLowerCase();
+                const relevantSentences = sentences.filter(sentence => 
+                    sentence.toLowerCase().includes(searchLower)
+                );
+                
+                return relevantSentences.slice(0, maxSentences);
+            };
+
+            const HistoryntResult = ({ item, searchTerm }) => {
+                const relevantSentences = extractRelevantSentences(item.meaning, searchTerm);
+                
+                const handleReadMore = () => {
+                    const cleanContent = item.meaning
+                        .replace(/<br\s*\/?>/gi, '\n')
+                        .replace(/<p>/gi, '\n\n')
+                        .replace(/<\/p>/gi, '')
+                        .replace(/<[^>]*>/g, '')
+                        .replace(/\n{3,}/g, '\n\n')
+                        .trim();
+                    
+                    setModalContent({ title: item.word, content: cleanContent });
+                    setModalOpen(true);
+                };
+                
+                return (
+                    <div className="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                                <p className="font-bold text-orange-900 text-lg">{item.word}</p>
+                                <TableBadge source={item.source} />
+                            </div>
+                            <button 
+                                onClick={() => toggleFavorite(item)}
+                                className={`favorite-btn ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
+                            >
+                                <HeartIcon filled={isFavorite(item)} />
+                            </button>
+                        </div>
+                        
+                        {relevantSentences && relevantSentences.length > 0 ? (
+                            <div>
+                                <ul className="text-sm text-gray-700 space-y-1 mb-3 list-disc list-inside">
+                                    {relevantSentences.map((sentence, idx) => (
+                                        <li key={idx} className="leading-relaxed">
+                                            {sentence.length > 150 ? sentence.substring(0, 150) + '...' : sentence}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <button 
+                                    onClick={handleReadMore}
+                                    className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-800 hover:underline font-semibold text-sm cursor-pointer"
+                                >
+                                    <span>📖</span>
+                                    <span>සම්පූර්ණ ලිපිය කියවන්න</span>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        ) : (
+                            <div>
+                                <p className="text-sm text-gray-700 mb-2">
+                                    {item.meaning.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').substring(0, 200)}...
+                                </p>
+                                <button 
+                                    onClick={handleReadMore}
+                                    className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-800 hover:underline font-semibold text-sm cursor-pointer"
+                                >
+                                    <span>📖</span>
+                                    <span>සම්පූර්ණ ලිපිය කියවන්න</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            const RegularResult = ({ item, searchTerm }) => {
+                const highlightText = (text, term) => {
+                    if (!term || !text) return text;
+                    
+                    const words = text.split(/(\s+)/);
+                    return words.map((word, index) => {
+                        if (word.toLowerCase().includes(term.toLowerCase()) && word.trim()) {
+                            return (
+                                <span 
+                                    key={index} 
+                                    className="bg-yellow-200 font-bold text-amber-900" 
+                                    style={{padding: '0 2px', borderRadius: '3px'}}
+                                >
+                                    {word}
+                                </span>
+                            );
+                        }
+                        return word;
+                    });
+                };
+
+                return (
+                    <div className="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                        <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                                <p className="font-bold text-orange-900">{item.word}</p>
+                                <TableBadge source={item.source} />
+                            </div>
+                            <button 
+                                onClick={() => toggleFavorite(item)}
+                                className={`favorite-btn ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
+                            >
+                                <HeartIcon filled={isFavorite(item)} />
+                            </button>
+                        </div>
+                        <p className="text-sm text-gray-700">{highlightText(item.meaning, searchTerm)}</p>
+                    </div>
+                );
+            };
+
+            const TableBadge = ({ source }) => {
+                const color = TABLE_COLORS[source] || { bg: 'bg-gray-100', text: 'text-gray-800', label: source };
+                return (
+                    <span className={`table-badge ${color.bg} ${color.text}`}>
+                        {color.label}
+                    </span>
+                );
+            };
+
+            return (
+                <div className="gradient-bg">
+                    {notification && (
+                        <div className="fixed top-4 right-4 z-50 notification">
+                            <div className="bg-indigo-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2">
+                                <span className="text-lg">{notification}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="max-w-7xl mx-auto p-6">
+                        {modalOpen && (
+                            <div 
+                                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+                                onClick={() => setModalOpen(false)}
+                            >
+                                <div 
+                                    className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                                        <h2 className="text-2xl font-bold text-gray-800">{modalContent.title}</h2>
+                                        <button 
+                                            onClick={() => setModalOpen(false)}
+                                            className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="p-6 overflow-y-auto flex-1">
+                                        <div className="prose prose-lg max-w-none">
+                                            {modalContent.content.split('\n').map((paragraph, idx) => (
+                                                paragraph.trim() && (
+                                                    <p key={idx} className="mb-4 text-gray-700 leading-relaxed">
+                                                        {paragraph}
+                                                    </p>
+                                                )
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-6 border-t border-gray-200 flex justify-end">
+                                        <button 
+                                            onClick={() => setModalOpen(false)}
+                                            className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-semibold transition-colors"
+                                        >
+                                            වසන්න
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="text-center mb-8 pt-6">
+                            <div className="flex justify-center items-center gap-4 mb-3">
+                                <h1 className="text-5xl font-bold text-white">විසිතුරු හෙළ බස</h1>
+                                <button 
+                                    onClick={toggleDarkMode}
+                                    className="p-3 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full transition-all"
+                                >
+                                    {darkMode ? <SunIcon /> : <MoonIcon />}
+                                </button>
+                            </div>
+                            <p className="text-white text-lg opacity-90">සිංහල භාෂාවේ අලංකාර යෙදුම් එකතුව</p>
+                        </div>
+
+                        {wordOfDay && (
+                            <div className="mb-6 bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl shadow-xl p-6 text-center">
+                                <h3 className="text-white text-2xl font-bold mb-2">📖 අද දවසේ වචනය</h3>
+                                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 inline-block">
+                                    <div className="flex items-center justify-center gap-3">
+                                        <p className="text-white text-3xl font-bold">{wordOfDay.word}</p>
+                                        <button 
+                                            onClick={() => toggleFavorite(wordOfDay)}
+                                            className={`favorite-btn p-2 ${isFavorite(wordOfDay) ? 'active' : 'text-white'}`}
+                                        >
+                                            <HeartIcon filled={isFavorite(wordOfDay)} />
+                                        </button>
+                                    </div>
+                                    <p className="text-white text-lg mt-2">{wordOfDay.meaning}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 mb-6 flex-wrap">
+                            <a 
+                                href="විසිතුරු හෙලබස.html" 
+                                className="flex-1 min-w-[200px] px-6 py-4 bg-white bg-opacity-20 backdrop-blur-sm border-2 border-white border-opacity-30 rounded-t-2xl text-white font-semibold text-center text-lg hover:bg-opacity-30 transition-all"
+                            >
+                                විසිතුරු හෙළ යෙදුම්
+                            </a>
+                            <div className="flex-1 min-w-[200px] px-6 py-4 bg-white rounded-t-2xl font-semibold text-center text-lg shadow-lg text-purple-900">
+                                සිංහල ශබ්දකෝෂය
+                            </div>
+                            <button
+                                onClick={() => setShowFavorites(!showFavorites)}
+                                className="px-6 py-4 bg-red-500 hover:bg-red-600 rounded-t-2xl font-semibold text-center text-lg shadow-lg text-white transition-all flex items-center gap-2 min-w-[150px] justify-center"
+                            >
+                                <HeartIcon filled={true} />
+                                <span>ප්‍රියතම ({favorites.length})</span>
+                            </button>
+                        </div>
+
+                        <div className="bg-white rounded-b-2xl rounded-tr-2xl shadow-2xl overflow-hidden">
+                            {showFavorites && (
+                                <div className="bg-red-50 p-8 border-b-4 border-red-300">
+                                    <h2 className="text-3xl font-bold text-red-900 mb-6 text-center">⭐ ප්‍රියතම වචන</h2>
+                                    {favorites.length === 0 ? (
+                                        <p className="text-center text-gray-600 py-8">ප්‍රියතම වචන නැත. ❤️ බොත්තම ඔබන්න එක් කරන්න!</p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                                            {favorites.map((item, idx) => (
+                                                <div key={idx} className="p-4 bg-white rounded-lg shadow border-l-4 border-red-500">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-red-900 text-lg">{item.word}</p>
+                                                            <TableBadge source={item.source} />
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => toggleFavorite(item)}
+                                                            className="favorite-btn active p-2"
+                                                        >
+                                                            <HeartIcon filled={true} />
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-sm text-gray-700">{item.meaning}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8">
+                                <h2 className="text-3xl font-bold text-white mb-6 text-center">🔍 වචනයෙන් සොයන්න</h2>
+                                <div className="max-w-3xl mx-auto">
+                                    <input
+                                        type="text"
+                                        value={search1Term}
+                                        onChange={(e) => setSearch1Term(e.target.value)}
+                                        placeholder="වචනයක් ඇතුළත් කරන්න..."
+                                        className="w-full px-6 py-4 text-xl border-4 border-white rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-300"
+                                    />
+                                    <p className="text-white text-sm mt-2 text-center opacity-80">
+                                        ශබ්දකෝෂය සහ LearnX Pedia වලින් සොයනවා
+                                    </p>
+                                </div>
+                            </div>
+
+                            {search1Loading && (
+                                <div className="text-center py-12">
+                                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                                </div>
+                            )}
+
+                            {search1Results.length > 0 && (
+                                <div className="bg-white">
+                                    <div className="bg-purple-50 border-b-2 border-purple-200 py-3 px-6">
+                                        <p className="text-center text-purple-800 font-semibold">ප්‍රතිඵල: {search1Results.length}</p>
+                                    </div>
+                                    <div ref={resultsRef} className="max-h-[500px] overflow-y-auto">
+                                        {search1Results.map((item, index) => (
+                                            <div 
+                                                key={`${item.source}-${item.id}`}
+                                                className={`p-6 border-b ${index === selectedIndex ? 'selected-result' : 'hover:bg-gray-50'}`}
+                                            >
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className={`text-2xl ${index === selectedIndex ? 'result-word' : 'font-semibold text-gray-800'}`}>
+                                                            {index === selectedIndex ? highlightWord(item.word, search1Term) : item.word}
+                                                        </h3>
+                                                        <TableBadge source={item.source} />
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => toggleFavorite(item)}
+                                                        className={`favorite-btn p-2 ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
+                                                        title={isFavorite(item) ? 'ප්‍රියතමයන්ගෙන් ඉවත් කරන්න' : 'ප්‍රියතමයන්ට එක් කරන්න'}
+                                                    >
+                                                        <HeartIcon filled={isFavorite(item)} />
+                                                    </button>
+                                                </div>
+                                                <p className={`text-lg ${index === selectedIndex ? 'result-meaning' : 'text-gray-700'}`}>
+                                                    {index === selectedIndex ? highlightWord(item.meaning, search1Term) : item.meaning}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {!search1Loading && search1Term.length >= 2 && search1Results.length === 0 && (
+                                <div className="text-center py-12 text-gray-600">
+                                    <p>"{search1Term}" සඳහා ප්‍රතිඵල හමු නොවීය</p>
+                                </div>
+                            )}
+
+                            <div className="bg-gray-50 p-8">
+                                <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">වෙනත් සෙවුම් විකල්ප</h3>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                                    <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-green-500">
+                                        <h4 className="text-xl font-bold text-green-900 mb-4">📚 වචන වර්ග අනුව සොයන්න</h4>
+                                        <div className="relative" ref={dropdownRef}>
+                                            <button
+                                                onClick={() => setShowDropdown(!showDropdown)}
+                                                className="w-full px-4 py-3 border-2 border-green-200 rounded-xl focus:outline-none text-left flex items-center justify-between bg-white hover:bg-green-50"
+                                            >
+                                                <span>{selectedType || 'වචන වර්ගයක් තෝරන්න...'}</span>
+                                                <ChevronDownIcon />
+                                            </button>
+                                            
+                                            {showDropdown && (
+                                                <div className="absolute z-20 w-full mt-2 bg-white border-2 border-green-200 rounded-xl shadow-xl max-h-80 overflow-y-auto">
+                                                    {WORD_TYPES.map((type, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            onClick={() => handleTypeSelect(type)}
+                                                            className="w-full px-4 py-3 text-left hover:bg-green-50 border-b border-green-100 last:border-b-0"
+                                                        >
+                                                            {type.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {search2Loading && (
+                                            <div className="mt-4 flex justify-center">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                                            </div>
+                                        )}
+                                        
+                                        {search2Results.length > 0 && (
+                                            <div className="mt-4">
+                                                <p className="text-sm text-green-700 mb-3 font-semibold">ප්‍රතිඵල: {search2Results.length}</p>
+                                                <div className="max-h-80 overflow-y-auto space-y-2">
+                                                    {search2Results.slice(0, 10).map((item) => (
+                                                        <div key={item.id} className="p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-bold text-green-900">{item.word}</p>
+                                                                </div>
+                                                                <button 
+                                                                    onClick={() => toggleFavorite(item)}
+                                                                    className={`favorite-btn ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
+                                                                >
+                                                                    <HeartIcon filled={isFavorite(item)} />
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-sm text-gray-700">{item.meaning}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-orange-500">
+                                        <h4 className="text-xl font-bold text-orange-900 mb-4">🔎 ඕනෑම තැනකින් සොයන්න</h4>
+                                        <input
+                                            type="text"
+                                            value={search3Term}
+                                            onChange={(e) => setSearch3Term(e.target.value)}
+                                            placeholder="වචනයක් හෝ අර්ථයක් ඇතුළත් කරන්න..."
+                                            className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:border-orange-500"
+                                        />
+                                        <p className="text-xs text-gray-600 mt-2">සියලු database වලින් සොයනවා</p>
+                                        
+                                        {search3Loading && (
+                                            <div className="mt-4 flex justify-center">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                                            </div>
+                                        )}
+                                        
+                                        {search3Results.length > 0 && (
+                                            <div className="mt-4">
+                                                <p className="text-sm text-orange-700 mb-3 font-semibold">ප්‍රතිඵල: {search3Results.length}</p>
+                                                <div className="max-h-80 overflow-y-auto space-y-2">
+                                                    {search3Results.slice(0, 15).map((item, idx) => (
+                                                        item.source === 'Historynt' ? (
+                                                            <HistoryntResult key={`${item.source}-${item.id}-${idx}`} item={item} searchTerm={search3Term} />
+                                                        ) : (
+                                                            <RegularResult key={`${item.source}-${item.id}-${idx}`} item={item} searchTerm={search3Term} />
+                                                        )
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6">
+                                    <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">භාවිත කරන්නේ කෙසේද?</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
+                                        <div className="p-4 bg-white rounded-lg shadow">
+                                            <h4 className="font-bold text-indigo-900 mb-2">🔍 වචනයෙන් සොයන්න</h4>
+                                            <p className="text-gray-700">ශබ්දකෝෂය සහ LearnX Pedia යන database දෙකෙන්ම වචනය අනුව සොයනවා. මැද පෙන්වන වචනය ප්‍රධාන ප්‍රතිඵලයයි.</p>
+                                        </div>
+                                        <div className="p-4 bg-white rounded-lg shadow">
+                                            <h4 className="font-bold text-green-900 mb-2">📚 වචන වර්ග අනුව</h4>
+                                            <p className="text-gray-700">නාම පද, ක්‍රියා පද, විශේෂණ පද වැනි වචන වර්ග අනුව ශබ්දකෝෂයෙන් සොයන්න.</p>
+                                        </div>
+                                        <div className="p-4 bg-white rounded-lg shadow">
+                                            <h4 className="font-bold text-orange-900 mb-2">🔎 ඕනෑම තැනකින්</h4>
+                                            <p className="text-gray-700">සියලු database 4 වලින්ම වචනයේ හෝ අර්ථයේ ඕනෑම තැනක ඇති පාඨය සොයන්න.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                        <div className="p-4 bg-gradient-to-r from-red-100 to-pink-100 rounded-lg shadow">
+                                            <h4 className="font-bold text-red-900 mb-2">⭐ ප්‍රියතම වචන</h4>
+                                            <p className="text-gray-700">❤️ බොත්තම ඔබලා ඔබේ ප්‍රියතම වචන සුරකින්න. පසුව "ප්‍රියතම" tab එකෙන් බලන්න.</p>
+                                        </div>
+                                        <div className="p-4 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg shadow">
+                                            <h4 className="font-bold text-amber-900 mb-2">📖 අද දවසේ වචනය</h4>
+                                            <p className="text-gray-700">දිනපතා නව වචනයක් ඉගෙන ගන්න. ඔබේ vocabulary වර්ධනය කරන්න!</p>
+                                        </div>
+                                        <div className="p-4 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-lg shadow">
+                                            <h4 className="font-bold text-purple-900 mb-2">🌓 Dark Mode</h4>
+                                            <p className="text-gray-700">රාත්‍රියේ කියවීමට පහසුවක්. ඉහළ දකුණේ 🌙 බොත්තම ඔබන්න.</p>
+                                        </div>
+                                        <div className="p-4 bg-gradient-to-r from-teal-100 to-cyan-100 rounded-lg shadow">
+                                            <h4 className="font-bold text-teal-900 mb-2">💾 Auto Save</h4>
+                                            <p className="text-gray-700">සියලු settings සහ favorites browser එකේ save වෙනවා. Browser වහලත් නැතිවෙන්නේ නැහැ!</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="text-center py-6 bg-gray-100 border-t">
+                                <p className="text-gray-600 text-sm">Copyright © Amila Udawattha</p>
+                                <p className="text-gray-500 text-xs mt-1">සියලු විශේෂාංග සහිතව - v2.0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
