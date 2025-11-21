@@ -39,7 +39,6 @@
             margin-left: 8px;
         }
 
-        /* Dark mode styles */
         body.dark-mode {
             background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
         }
@@ -123,7 +122,6 @@
         const SUPABASE_URL = 'https://uqgzlaxsnknheoerbfus.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxZ3psYXhzbmtuaGVvZXJiZnVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ4MDQzMTEsImV4cCI6MjA2MDM4MDMxMX0.O5dNUizqZ5kfwTs0mHLEorqOAqjZFjWakp2Q484MKEk';
 
-        // Icons
         const SearchIcon = () => (
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -177,6 +175,14 @@
             'english_dictionary': { bg: 'bg-pink-100', text: 'text-pink-800', label: 'English' }
         };
 
+        const TABLE_COLUMNS = {
+            'sinhala_words': { word: 'word', meaning: 'meaning' },
+            'learnX pedia': { word: 'word', meaning: 'meaning' },
+            'helavisithuru': { word: 'word', meaning: 'meaning' },
+            'Historynt': { word: 'title', meaning: 'content' },
+            'english_dictionary': { word: 'word', meaning: 'meaning' }
+        };
+
         function App() {
             const [search1Term, setSearch1Term] = useState('');
             const [search1Results, setSearch1Results] = useState([]);
@@ -192,20 +198,32 @@
             const [search3Results, setSearch3Results] = useState([]);
             const [search3Loading, setSearch3Loading] = useState(false);
 
+            const [letterPosition, setLetterPosition] = useState('1');
+            const [letterSearch, setLetterSearch] = useState('');
+            const [search4Results, setSearch4Results] = useState([]);
+            const [search4Loading, setSearch4Loading] = useState(false);
+            const [showPositionDropdown, setShowPositionDropdown] = useState(false);
+
             const [modalOpen, setModalOpen] = useState(false);
             const [modalContent, setModalContent] = useState({ title: '', content: '' });
 
-            // NEW FEATURES STATE
             const [favorites, setFavorites] = useState([]);
             const [showFavorites, setShowFavorites] = useState(false);
             const [darkMode, setDarkMode] = useState(false);
             const [wordOfDay, setWordOfDay] = useState(null);
             const [notification, setNotification] = useState('');
+            const [wordCounts, setWordCounts] = useState({
+                'sinhala_words': 0,
+                'learnX pedia': 0,
+                'helavisithuru': 0,
+                'Historynt': 0,
+                'english_dictionary': 0
+            });
 
             const dropdownRef = useRef(null);
             const resultsRef = useRef(null);
+            const positionDropdownRef = useRef(null);
 
-            // Load favorites and dark mode from localStorage
             useEffect(() => {
                 const loadData = () => {
                     try {
@@ -231,9 +249,44 @@
                     }
 
                     loadWordOfDay();
+                    loadWordCounts();
                 };
                 loadData();
             }, []);
+
+            const loadWordCounts = async () => {
+                const tables = ['sinhala_words', 'learnX pedia', 'helavisithuru', 'Historynt', 'english_dictionary'];
+                const counts = {};
+
+                for (const table of tables) {
+                    try {
+                        const encodedTable = encodeURIComponent(table);
+                        const url = `${SUPABASE_URL}/rest/v1/${encodedTable}?select=id&limit=1`;
+                        
+                        const response = await fetch(url, {
+                            method: 'HEAD',
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                'Prefer': 'count=exact'
+                            }
+                        });
+
+                        const contentRange = response.headers.get('content-range');
+                        if (contentRange) {
+                            const match = contentRange.match(/\/(\d+)$/);
+                            if (match) {
+                                counts[table] = parseInt(match[1]);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn(`Error loading count for ${table}:`, err);
+                        counts[table] = 0;
+                    }
+                }
+
+                setWordCounts(counts);
+            };
 
             const loadWordOfDay = () => {
                 try {
@@ -248,7 +301,6 @@
                         }
                     }
 
-                    // Fetch new word of the day
                     const randomOffset = Math.floor(Math.random() * 1000);
                     const url = `${SUPABASE_URL}/rest/v1/sinhala_words?select=id,word,meaning&limit=1&offset=${randomOffset}`;
                     
@@ -306,14 +358,6 @@
             const showNotification = (message) => {
                 setNotification(message);
                 setTimeout(() => setNotification(''), 3000);
-            };
-
-            const TABLE_COLUMNS = {
-                'sinhala_words': { word: 'word', meaning: 'meaning' },
-                'learnX pedia': { word: 'word', meaning: 'meaning' },
-                'helavisithuru': { word: 'word', meaning: 'meaning' },
-                'Historynt': { word: 'title', meaning: 'content' },
-                'english_dictionary': { word: 'word', meaning: 'meaning' }
             };
 
             const searchFromTable = async (tableName, term, searchType = 'word') => {
@@ -492,6 +536,112 @@
                 }
             };
 
+            const performSearch4 = async () => {
+                if (!letterSearch || letterSearch.length === 0) {
+                    setSearch4Results([]);
+                    return;
+                }
+
+                setSearch4Loading(true);
+                try {
+                    const [sinhalaResults, learnXResults, helaResults] = await Promise.all([
+                        searchByLetterPosition('sinhala_words', letterSearch, letterPosition),
+                        searchByLetterPosition('learnX pedia', letterSearch, letterPosition),
+                        searchByLetterPosition('helavisithuru', letterSearch, letterPosition)
+                    ]);
+
+                    const allResults = [...sinhalaResults, ...learnXResults, ...helaResults];
+                    allResults.sort((a, b) => a.word.localeCompare(b.word, 'si'));
+                    
+                    setSearch4Results(allResults);
+                } catch (err) {
+                    console.error('Search error:', err);
+                } finally {
+                    setSearch4Loading(false);
+                }
+            };
+
+            const searchByLetterPosition = async (tableName, letter, position) => {
+                try {
+                    const encodedTableName = encodeURIComponent(tableName);
+                    const columns = TABLE_COLUMNS[tableName];
+                    
+                    if (!columns) return [];
+                    
+                    const url = `${SUPABASE_URL}/rest/v1/${encodedTableName}?select=id,${columns.word},${columns.meaning}&limit=5000&order=${columns.word}.asc`;
+                    
+                    const response = await fetch(url, {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const filteredResults = [];
+                        
+                        data.forEach(item => {
+                            const wordValue = item[columns.word];
+                            const meaningValue = item[columns.meaning];
+                            
+                            if (!wordValue || !meaningValue) return;
+                            
+                            if (wordValue.includes(',')) {
+                                const words = wordValue.split(',').map(w => w.trim());
+                                const matchingWords = words.filter(w => {
+                                    if (position === 'අග අකුර') {
+                                        return w.endsWith(letter);
+                                    } else {
+                                        const pos = parseInt(position);
+                                        if (isNaN(pos)) return false;
+                                        return w.substring(pos - 1).startsWith(letter);
+                                    }
+                                });
+                                
+                                if (matchingWords.length > 0) {
+                                    filteredResults.push({
+                                        id: item.id,
+                                        word: wordValue,
+                                        meaning: meaningValue,
+                                        source: tableName,
+                                        matchedWords: matchingWords
+                                    });
+                                }
+                            } else {
+                                let matches = false;
+                                
+                                if (position === 'අග අකුර') {
+                                    matches = wordValue.endsWith(letter);
+                                } else {
+                                    const pos = parseInt(position);
+                                    if (!isNaN(pos)) {
+                                        matches = wordValue.substring(pos - 1).startsWith(letter);
+                                    }
+                                }
+                                
+                                if (matches) {
+                                    filteredResults.push({
+                                        id: item.id,
+                                        word: wordValue,
+                                        meaning: meaningValue,
+                                        source: tableName
+                                    });
+                                }
+                            }
+                        });
+                        
+                        return filteredResults;
+                    }
+                    
+                    return [];
+                } catch (err) {
+                    console.warn(`Error searching ${tableName}:`, err.message);
+                    return [];
+                }
+            };
+
             useEffect(() => {
                 const timer = setTimeout(() => {
                     if (search1Term && search1Term.length >= 2) {
@@ -537,6 +687,9 @@
                 const handleClickOutside = (event) => {
                     if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                         setShowDropdown(false);
+                    }
+                    if (positionDropdownRef.current && !positionDropdownRef.current.contains(event.target)) {
+                        setShowPositionDropdown(false);
                     }
                 };
                 document.addEventListener('mousedown', handleClickOutside);
@@ -665,385 +818,508 @@
                                 <span 
                                     key={index} 
                                     className="bg-yellow-200 font-bold text-amber-900"
-style={{padding: '0 2px', borderRadius: '3px'}}
->
-{word}
-</span>
-);
-}
-return word;
-});
-};
-return (
-                <div className="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500">
-                    <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                            <p className="font-bold text-orange-900">{item.word}</p>
-                            <TableBadge source={item.source} />
-                        </div>
-                        <button 
-                            onClick={() => toggleFavorite(item)}
-                            className={`favorite-btn ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
-                        >
-                            <HeartIcon filled={isFavorite(item)} />
-                        </button>
-                    </div>
-                    <p className="text-sm text-gray-700">{highlightText(item.meaning, searchTerm)}</p>
-                </div>
-            );
-        };
+                                    style={{padding: '0 2px', borderRadius: '3px'}}
+                                >
+                                    {word}
+                                </span>
+                            );
+                        }
+                        return word;
+                    });
+                };
 
-        const TableBadge = ({ source }) => {
-            const color = TABLE_COLORS[source] || { bg: 'bg-gray-100', text: 'text-gray-800', label: source };
-            return (
-                <span className={`table-badge ${color.bg} ${color.text}`}>
-                    {color.label}
-                </span>
-            );
-        };
-
-        return (
-            <div className="gradient-bg">
-                {notification && (
-                    <div className="fixed top-4 right-4 z-50 notification">
-                        <div className="bg-indigo-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2">
-                            <span className="text-lg">{notification}</span>
-                        </div>
-                    </div>
-                )}
-
-                <div className="max-w-7xl mx-auto p-6">
-                    {modalOpen && (
-                        <div 
-                            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-                            onClick={() => setModalOpen(false)}
-                        >
-                            <div 
-                                className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                                    <h2 className="text-2xl font-bold text-gray-800">{modalContent.title}</h2>
-                                    <button 
-                                        onClick={() => setModalOpen(false)}
-                                        className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                                
-                                <div className="p-6 overflow-y-auto flex-1">
-                                    <div className="prose prose-lg max-w-none">
-                                        {modalContent.content.split('\n').map((paragraph, idx) => (
-                                            paragraph.trim() && (
-                                                <p key={idx} className="mb-4 text-gray-700 leading-relaxed">
-                                                    {paragraph}
-                                                </p>
-                                            )
-                                        ))}
-                                    </div>
-                                </div>
-                                
-                                <div className="p-6 border-t border-gray-200 flex justify-end">
-                                    <button 
-                                        onClick={() => setModalOpen(false)}
-                                        className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-semibold transition-colors"
-                                    >
-                                        වසන්න
-                                    </button>
-                                </div>
+                return (
+                    <div className="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                        <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                                <p className="font-bold text-orange-900">{item.word}</p>
+                                <TableBadge source={item.source} />
                             </div>
-                        </div>
-                    )}
-
-                    <div className="text-center mb-8 pt-6">
-                        <div className="flex justify-center items-center gap-4 mb-3">
-                            <h1 className="text-5xl font-bold text-white">විසිතුරු හෙළ බස</h1>
                             <button 
-                                onClick={toggleDarkMode}
-                                className="p-3 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full transition-all"
+                                onClick={() => toggleFavorite(item)}
+                                className={`favorite-btn ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
                             >
-                                {darkMode ? <SunIcon /> : <MoonIcon />}
+                                <HeartIcon filled={isFavorite(item)} />
                             </button>
                         </div>
-                        <p className="text-white text-lg opacity-90">සිංහල භාෂාවේ අලංකාර යෙදුම් එකතුව</p>
+                        <p className="text-sm text-gray-700">{highlightText(item.meaning, searchTerm)}</p>
                     </div>
+                );
+            };
 
-                    {wordOfDay && (
-                        <div className="mb-6 bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl shadow-xl p-6 text-center">
-                            <h3 className="text-white text-2xl font-bold mb-2">📖 අද දවසේ වචනය</h3>
-                            <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 inline-block">
-                                <div className="flex items-center justify-center gap-3">
-                                    <p className="text-white text-3xl font-bold">{wordOfDay.word}</p>
-                                    <button 
-                                        onClick={() => toggleFavorite(wordOfDay)}
-                                        className={`favorite-btn p-2 ${isFavorite(wordOfDay) ? 'active' : 'text-white'}`}
-                                    >
-                                        <HeartIcon filled={isFavorite(wordOfDay)} />
-                                    </button>
-                                </div>
-                                <p className="text-white text-lg mt-2">{wordOfDay.meaning}</p>
+            const TableBadge = ({ source }) => {
+                const color = TABLE_COLORS[source] || { bg: 'bg-gray-100', text: 'text-gray-800', label: source };
+                return (
+                    <span className={`table-badge ${color.bg} ${color.text}`}>
+                        {color.label}
+                    </span>
+                );
+            };
+
+            return (
+                <div className="gradient-bg">
+                    {notification && (
+                        <div className="fixed top-4 right-4 z-50 notification">
+                            <div className="bg-indigo-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2">
+                                <span className="text-lg">{notification}</span>
                             </div>
                         </div>
                     )}
 
-                    <div className="flex gap-3 mb-6 flex-wrap">
-                        <a 
-                            href="විසිතුරු හෙලබස.html" 
-                            className="flex-1 min-w-[200px] px-6 py-4 bg-white bg-opacity-20 backdrop-blur-sm border-2 border-white border-opacity-30 rounded-t-2xl text-white font-semibold text-center text-lg hover:bg-opacity-30 transition-all"
-                        >
-                            විසිතුරු හෙළ යෙදුම්
-                        </a>
-                        <div className="flex-1 min-w-[200px] px-6 py-4 bg-white rounded-t-2xl font-semibold text-center text-lg shadow-lg text-purple-900">
-                            සිංහල ශබ්දකෝෂය
-                        </div>
-                        <button
-                            onClick={() => setShowFavorites(!showFavorites)}
-                            className="px-6 py-4 bg-red-500 hover:bg-red-600 rounded-t-2xl font-semibold text-center text-lg shadow-lg text-white transition-all flex items-center gap-2 min-w-[150px] justify-center"
-                        >
-                            <HeartIcon filled={true} />
-                            <span>ප්‍රියතම ({favorites.length})</span>
-                        </button>
-                    </div>
+                    <div className="max-w-7xl mx-auto p-6">
+                        {modalOpen && (
+                            <div 
+                                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+                                onClick={() => setModalOpen(false)}
+                            >
+                                <div 
+                                    className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                                        <h2 className="text-2xl font-bold text-gray-800">{modalContent.title}</h2>
+                                        <button 
+                                            onClick={() => setModalOpen(false)}
+                                            className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="p-6 overflow-y-auto flex-1">
+                                        <div className="prose prose-lg max-w-none">
+                                            {modalContent.content.split('\n').map((paragraph, idx) => (
+                                                paragraph.trim() && (
+                                                    <p key={idx} className="mb-4 text-gray-700 leading-relaxed">
+                                                        {paragraph}
+                                                    </p>
+                                                )
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-6 border-t border-gray-200 flex justify-end">
+                                        <button 
+                                            onClick={() => setModalOpen(false)}
+                                            className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-semibold transition-colors"
+                                        >
+                                            වසන්න
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                    <div className="bg-white rounded-b-2xl rounded-tr-2xl shadow-2xl overflow-hidden">
-                        {showFavorites && (
-                            <div className="bg-red-50 p-8 border-b-4 border-red-300">
-                                <h2 className="text-3xl font-bold text-red-900 mb-6 text-center">⭐ ප්‍රියතම වචන</h2>
-                                {favorites.length === 0 ? (
-                                    <p className="text-center text-gray-600 py-8">ප්‍රියතම වචන නැත. ❤️ බොත්තම ඔබන්න එක් කරන්න!</p>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                                        {favorites.map((item, idx) => (
-                                            <div key={idx} className="p-4 bg-white rounded-lg shadow border-l-4 border-red-500">
+                        <div className="text-center mb-8 pt-6">
+                            <div className="flex justify-center items-center gap-4 mb-3">
+                                <h1 className="text-5xl font-bold text-white">විසිතුරු හෙළ බස</h1>
+                                <button 
+                                    onClick={toggleDarkMode}
+                                    className="p-3 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full transition-all"
+                                >
+                                    {darkMode ? <SunIcon /> : <MoonIcon />}
+                                </button>
+                            </div>
+                            <p className="text-white text-lg opacity-90">සිංහල භාෂාවේ අලංකාර යෙදුම් එකතුව</p>
+                        </div>
+
+                        {wordOfDay && (
+                            <div className="mb-6 bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl shadow-xl p-6 text-center">
+                                <h3 className="text-white text-2xl font-bold mb-2">📖 අද දවසේ වචනය</h3>
+                                <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 inline-block">
+                                    <div className="flex items-center justify-center gap-3">
+                                        <p className="text-white text-3xl font-bold">{wordOfDay.word}</p>
+                                        <button 
+                                            onClick={() => toggleFavorite(wordOfDay)}
+                                            className={`favorite-btn p-2 ${isFavorite(wordOfDay) ? 'active' : 'text-white'}`}
+                                        >
+                                            <HeartIcon filled={isFavorite(wordOfDay)} />
+                                        </button>
+                                    </div>
+                                    <p className="text-white text-lg mt-2">{wordOfDay.meaning}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-3">
+                            {Object.entries(TABLE_COLORS).map(([table, color]) => (
+                                <div key={table} className="bg-white bg-opacity-20 backdrop-blur-sm rounded-xl p-4 text-center border-2 border-white border-opacity-30">
+                                    <div className={`inline-block px-3 py-1 rounded-lg ${color.bg} ${color.text} text-sm font-semibold mb-2`}>
+                                        {color.label}
+                                    </div>
+                                    <div className="text-white text-2xl font-bold">
+                                        {wordCounts[table]?.toLocaleString() || '...'}
+                                    </div>
+                                    <div className="text-white text-xs opacity-80">වචන</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-3 mb-6 flex-wrap">
+                            <a 
+                                href="විසිතුරු හෙලබස.html" 
+                                className="flex-1 min-w-[200px] px-6 py-4 bg-white bg-opacity-20 backdrop-blur-sm border-2 border-white border-opacity-30 rounded-t-2xl text-white font-semibold text-center text-lg hover:bg-opacity-30 transition-all"
+                            >
+                                විසිතුරු හෙළ යෙදුම්
+                            </a>
+                            <div className="flex-1 min-w-[200px] px-6 py-4 bg-white rounded-t-2xl font-semibold text-center text-lg shadow-lg text-purple-900">
+                                සිංහල ශබ්දකෝෂය
+                            </div>
+                            <button
+                                onClick={() => setShowFavorites(!showFavorites)}
+                                className="px-6 py-4 bg-red-500 hover:bg-red-600 rounded-t-2xl font-semibold text-center text-lg shadow-lg text-white transition-all flex items-center gap-2 min-w-[150px] justify-center"
+                            >
+                                <HeartIcon filled={true} />
+                                <span>ප්‍රියතම ({favorites.length})</span>
+                            </button>
+                        </div>
+
+                        <div className="bg-white rounded-b-2xl rounded-tr-2xl shadow-2xl overflow-hidden">
+                            {showFavorites && (
+                                <div className="bg-red-50 p-8 border-b-4 border-red-300">
+                                    <h2 className="text-3xl font-bold text-red-900 mb-6 text-center">⭐ ප්‍රියතම වචන</h2>
+                                    {favorites.length === 0 ? (
+                                        <p className="text-center text-gray-600 py-8">ප්‍රියතම වචන නැත. ❤️ බොත්තම ඔබන්න එක් කරන්න!</p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                                            {favorites.map((item, idx) => (
+                                                <div key={idx} className="p-4 bg-white rounded-lg shadow border-l-4 border-red-500">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-bold text-red-900 text-lg">{item.word}</p>
+                                                            <TableBadge source={item.source} />
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => toggleFavorite(item)}
+                                                            className="favorite-btn active p-2"
+                                                        >
+                                                            <HeartIcon filled={true} />
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-sm text-gray-700">{item.meaning}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8">
+                                <h2 className="text-3xl font-bold text-white mb-6 text-center">🔍 වචනයෙන් සොයන්න</h2>
+                                <div className="max-w-3xl mx-auto">
+                                    <input
+                                        type="text"
+                                        value={search1Term}
+                                        onChange={(e) => setSearch1Term(e.target.value)}
+                                        placeholder="වචනයක් ඇතුළත් කරන්න..."
+                                        className="w-full px-6 py-4 text-xl border-4 border-white rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-300"
+                                    />
+                                    <p className="text-white text-sm mt-2 text-center opacity-80">
+                                        ශබ්දකෝෂය සහ LearnX Pedia වලින් සොයනවා
+                                    </p>
+                                </div>
+                            </div>
+
+                            {search1Loading && (
+                                <div className="text-center py-12">
+                                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                                </div>
+                            )}
+
+                            {search1Results.length > 0 && (
+                                <div className="bg-white">
+                                    <div className="bg-purple-50 border-b-2 border-purple-200 py-3 px-6">
+                                        <p className="text-center text-purple-800 font-semibold">ප්‍රතිඵල: {search1Results.length}</p>
+                                    </div>
+                                    <div ref={resultsRef} className="max-h-[500px] overflow-y-auto">
+                                        {search1Results.map((item, index) => (
+                                            <div 
+                                                key={`${item.source}-${item.id}`}
+                                                className={`p-6 border-b ${index === selectedIndex ? 'selected-result' : 'hover:bg-gray-50'}`}
+                                            >
                                                 <div className="flex items-center justify-between mb-2">
                                                     <div className="flex items-center gap-2">
-                                                        <p className="font-bold text-red-900 text-lg">{item.word}</p>
+                                                        <h3 className={`text-2xl ${index === selectedIndex ? 'result-word' : 'font-semibold text-gray-800'}`}>
+                                                            {index === selectedIndex ? highlightWord(item.word, search1Term) : item.word}
+                                                        </h3>
                                                         <TableBadge source={item.source} />
                                                     </div>
                                                     <button 
                                                         onClick={() => toggleFavorite(item)}
-                                                        className="favorite-btn active p-2"
+                                                        className={`favorite-btn p-2 ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
+                                                        title={isFavorite(item) ? 'ප්‍රියතමයන්ගෙන් ඉවත් කරන්න' : 'ප්‍රියතමයන්ට එක් කරන්න'}
                                                     >
-                                                        <HeartIcon filled={true} />
+                                                        <HeartIcon filled={isFavorite(item)} />
                                                     </button>
                                                 </div>
-                                                <p className="text-sm text-gray-700">{item.meaning}</p>
+                                                <p className={`text-lg ${index === selectedIndex ? 'result-meaning' : 'text-gray-700'}`}>
+                                                    {index === selectedIndex ? highlightWord(item.meaning, search1Term) : item.meaning}
+                                                </p>
                                             </div>
                                         ))}
                                     </div>
-                                )}
-                            </div>
-                        )}
-
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8">
-                            <h2 className="text-3xl font-bold text-white mb-6 text-center">🔍 වචනයෙන් සොයන්න</h2>
-                            <div className="max-w-3xl mx-auto">
-                                <input
-                                    type="text"
-                                    value={search1Term}
-                                    onChange={(e) => setSearch1Term(e.target.value)}
-                                    placeholder="වචනයක් ඇතුළත් කරන්න..."
-                                    className="w-full px-6 py-4 text-xl border-4 border-white rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-300"
-                                />
-                                <p className="text-white text-sm mt-2 text-center opacity-80">
-                                    ශබ්දකෝෂය සහ LearnX Pedia වලින් සොයනවා
-                                </p>
-                            </div>
-                        </div>
-
-                        {search1Loading && (
-                            <div className="text-center py-12">
-                                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-                            </div>
-                        )}
-
-                        {search1Results.length > 0 && (
-                            <div className="bg-white">
-                                <div className="bg-purple-50 border-b-2 border-purple-200 py-3 px-6">
-                                    <p className="text-center text-purple-800 font-semibold">ප්‍රතිඵල: {search1Results.length}</p>
                                 </div>
-                                <div ref={resultsRef} className="max-h-[500px] overflow-y-auto">
-                                    {search1Results.map((item, index) => (
-                                        <div 
-                                            key={`${item.source}-${item.id}`}
-                                            className={`p-6 border-b ${index === selectedIndex ? 'selected-result' : 'hover:bg-gray-50'}`}
-                                        >
-                                            <div className="flex items-center justify-between mb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <h3 className={`text-2xl ${index === selectedIndex ? 'result-word' : 'font-semibold text-gray-800'}`}>
-                                                        {index === selectedIndex ? highlightWord(item.word, search1Term) : item.word}
-                                                    </h3>
-                                                    <TableBadge source={item.source} />
+                            )}
+
+                            {!search1Loading && search1Term.length >= 2 && search1Results.length === 0 && (
+                                <div className="text-center py-12 text-gray-600">
+                                    <p>"{search1Term}" සඳහා ප්‍රතිඵල හමු නොවීය</p>
+                                </div>
+                            )}
+
+                            <div className="bg-gray-50 p-8">
+                                <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">වෙනත් සෙවුම් විකල්ප</h3>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                                    <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-green-500">
+                                        <h4 className="text-xl font-bold text-green-900 mb-4">📚 වචන වර්ග අනුව සොයන්න</h4>
+                                        <div className="relative" ref={dropdownRef}>
+                                            <button
+                                                onClick={() => setShowDropdown(!showDropdown)}
+                                                className="w-full px-4 py-3 border-2 border-green-200 rounded-xl focus:outline-none text-left flex items-center justify-between bg-white hover:bg-green-50"
+                                            >
+                                                <span>{selectedType || 'වචන වර්ගයක් තෝරන්න...'}</span>
+                                                <ChevronDownIcon />
+                                            </button>
+                                            
+                                            {showDropdown && (
+                                                <div className="absolute z-20 w-full mt-2 bg-white border-2 border-green-200 rounded-xl shadow-xl max-h-80 overflow-y-auto">
+                                                    {WORD_TYPES.map((type, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            onClick={() => handleTypeSelect(type)}
+                                                            className="w-full px-4 py-3 text-left hover:bg-green-50 border-b border-green-100 last:border-b-0"
+                                                        >
+                                                            {type.label}
+                                                        </button>
+                                                    ))}
                                                 </div>
-                                                <button 
-                                                    onClick={() => toggleFavorite(item)}
-                                                    className={`favorite-btn p-2 ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
-                                                    title={isFavorite(item) ? 'ප්‍රියතමයන්ගෙන් ඉවත් කරන්න' : 'ප්‍රියතමයන්ට එක් කරන්න'}
-                                                >
-                                                    <HeartIcon filled={isFavorite(item)} />
-                                                </button>
-                                            </div>
-                                            <p className={`text-lg ${index === selectedIndex ? 'result-meaning' : 'text-gray-700'}`}>
-                                                {index === selectedIndex ? highlightWord(item.meaning, search1Term) : item.meaning}
-                                            </p>
+                                            )}
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {!search1Loading && search1Term.length >= 2 && search1Results.length === 0 && (
-                            <div className="text-center py-12 text-gray-600">
-                                <p>"{search1Term}" සඳහා ප්‍රතිඵල හමු නොවීය</p>
-                            </div>
-                        )}
-
-                        <div className="bg-gray-50 p-8">
-                            <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">වෙනත් සෙවුම් විකල්ප</h3>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-                                <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-green-500">
-                                    <h4 className="text-xl font-bold text-green-900 mb-4">📚 වචන වර්ග අනුව සොයන්න</h4>
-                                    <div className="relative" ref={dropdownRef}>
-                                        <button
-                                            onClick={() => setShowDropdown(!showDropdown)}
-                                            className="w-full px-4 py-3 border-2 border-green-200 rounded-xl focus:outline-none text-left flex items-center justify-between bg-white hover:bg-green-50"
-                                        >
-                                            <span>{selectedType || 'වචන වර්ගයක් තෝරන්න...'}</span>
-                                            <ChevronDownIcon />
-                                        </button>
                                         
-                                        {showDropdown && (
-                                            <div className="absolute z-20 w-full mt-2 bg-white border-2 border-green-200 rounded-xl shadow-xl max-h-80 overflow-y-auto">
-                                                {WORD_TYPES.map((type, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        onClick={() => handleTypeSelect(type)}
-                                                        className="w-full px-4 py-3 text-left hover:bg-green-50 border-b border-green-100 last:border-b-0"
-                                                    >
-                                                        {type.label}
-                                                    </button>
-                                                ))}
+                                        {search2Loading && (
+                                            <div className="mt-4 flex justify-center">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                                            </div>
+                                        )}
+                                        
+                                        {search2Results.length > 0 && (
+                                            <div className="mt-4">
+                                                <p className="text-sm text-green-700 mb-3 font-semibold">ප්‍රතිඵල: {search2Results.length}</p>
+                                                <div className="max-h-80 overflow-y-auto space-y-2">
+                                                    {search2Results.slice(0, 10).map((item) => (
+                                                        <div key={item.id} className="p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-bold text-green-900">{item.word}</p>
+                                                                </div>
+                                                                <button 
+                                                                    onClick={() => toggleFavorite(item)}
+                                                                    className={`favorite-btn ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
+                                                                >
+                                                                    <HeartIcon filled={isFavorite(item)} />
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-sm text-gray-700">{item.meaning}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
-                                    
-                                    {search2Loading && (
-                                        <div className="mt-4 flex justify-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-                                        </div>
-                                    )}
-                                    
-                                    {search2Results.length > 0 && (
-                                        <div className="mt-4">
-                                            <p className="text-sm text-green-700 mb-3 font-semibold">ප්‍රතිඵල: {search2Results.length}</p>
-                                            <div className="max-h-80 overflow-y-auto space-y-2">
-                                                {search2Results.slice(0, 10).map((item) => (
-                                                    <div key={item.id} className="p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <div className="flex items-center gap-2">
-                                                                <p className="font-bold text-green-900">{item.word}</p>
-                                                            </div>
-                                                            <button 
-                                                                onClick={() => toggleFavorite(item)}
-                                                                className={`favorite-btn ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
+
+                                    <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-orange-500">
+                                        <h4 className="text-xl font-bold text-orange-900 mb-4">🔎 ඕනෑම තැනකින් සොයන්න</h4>
+                                        <input
+                                            type="text"
+                                            value={search3Term}
+                                            onChange={(e) => setSearch3Term(e.target.value)}
+                                            placeholder="වචනයක් හෝ අර්ථයක් ඇතුළත් කරන්න..."
+                                            className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:border-orange-500"
+                                        />
+                                        <p className="text-xs text-gray-600 mt-2">සියලු database වලින් සොයනවා (English සමඟ)</p>
+                                        
+                                        {search3Loading && (
+                                            <div className="mt-4 flex justify-center">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                                            </div>
+                                        )}
+                                        
+                                        {search3Results.length > 0 && (
+                                            <div className="mt-4">
+                                                <p className="text-sm text-orange-700 mb-3 font-semibold">ප්‍රතිඵල: {search3Results.length}</p>
+                                                <div className="max-h-80 overflow-y-auto space-y-2">
+                                                    {search3Results.slice(0, 15).map((item, idx) => (
+                                                        item.source === 'Historynt' ? (
+                                                            <HistoryntResult key={`${item.source}-${item.id}-${idx}`} item={item} searchTerm={search3Term} />
+                                                        ) : (
+                                                            <RegularResult key={`${item.source}-${item.id}-${idx}`} item={item} searchTerm={search3Term} />
+                                                        )
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-blue-500 md:col-span-2">
+                                        <h4 className="text-xl font-bold text-blue-900 mb-4">🎯 අකුරු ස්ථානය අනුව සොයන්න</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label className="block text-sm font-semibold text-blue-900 mb-2">ස්ථානය</label>
+                                                <div className="relative" ref={positionDropdownRef}>
+                                                    <button
+                                                        onClick={() => setShowPositionDropdown(!showPositionDropdown)}
+                                                        className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:outline-none text-left flex items-center justify-between bg-white hover:bg-blue-50"
+                                                    >
+                                                        <span>{letterPosition === 'අග අකුර' ? 'අග අකුර' : `${letterPosition} වන ස්ථානය`}</span>
+                                                        <ChevronDownIcon />
+                                                    </button>
+                                                    
+                                                    {showPositionDropdown && (
+                                                        <div className="absolute z-20 w-full mt-2 bg-white border-2 border-blue-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                                                            {[...Array(20)].map((_, i) => (
+                                                                <button
+                                                                    key={i + 1}
+                                                                    onClick={() => {
+                                                                        setLetterPosition((i + 1).toString());
+                                                                        setShowPositionDropdown(false);
+                                                                    }}
+                                                                    className="w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-blue-100"
+                                                                >
+                                                                    {i + 1} වන ස්ථානය
+                                                                </button>
+                                                            ))}
+                                                            <button
+                                                                onClick={() => {
+                                                                    setLetterPosition('අග අකුර');
+                                                                    setShowPositionDropdown(false);
+                                                                }}
+                                                                className="w-full px-4 py-3 text-left hover:bg-blue-50 font-semibold text-blue-900"
                                                             >
-                                                                <HeartIcon filled={isFavorite(item)} />
+                                                                අග අකුර
                                                             </button>
                                                         </div>
-                                                        <p className="text-sm text-gray-700">{item.meaning}</p>
-                                                    </div>
-                                                ))}
+                                                    )}
+                                                </div>
+                                            </div>
+                                            
+                                            <div>
+                                                <label className="block text-sm font-semibold text-blue-900 mb-2">අකුර</label>
+                                                <input
+                                                    type="text"
+                                                    value={letterSearch}
+                                                    onChange={(e) => setLetterSearch(e.target.value)}
+                                                    placeholder="උදා: ක, කු, කෙ, ලා..."
+                                                    className="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:outline-none focus:border-blue-500"
+                                                />
                                             </div>
                                         </div>
-                                    )}
+                                        
+                                        <button
+                                            onClick={performSearch4}
+                                            disabled={!letterSearch}
+                                            className="w-full px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                        >
+                                            සොයන්න
+                                        </button>
+                                        
+                                        <p className="text-xs text-gray-600 mt-2">
+                                            උදා: ස්ථානය=4, අකුර=කු → "විලක්කුව", "තුවක්කුව" | ස්ථානය=අග අකුර, අකුර=ල → "අල", "මල", "ගල"
+                                        </p>
+                                        
+                                        {search4Loading && (
+                                            <div className="mt-4 flex justify-center">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                            </div>
+                                        )}
+                                        
+                                        {search4Results.length > 0 && (
+                                            <div className="mt-4">
+                                                <p className="text-sm text-blue-700 mb-3 font-semibold">ප්‍රතිඵල: {search4Results.length}</p>
+                                                <div className="max-h-80 overflow-y-auto space-y-2">
+                                                    {search4Results.slice(0, 20).map((item, idx) => (
+                                                        <div key={`${item.source}-${item.id}-${idx}`} className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-bold text-blue-900">{item.word}</p>
+                                                                    <TableBadge source={item.source} />
+                                                                </div>
+                                                                <button 
+                                                                    onClick={() => toggleFavorite(item)}
+                                                                    className={`favorite-btn ${isFavorite(item) ? 'active' : 'text-gray-400 hover:text-red-500'}`}
+                                                                >
+                                                                    <HeartIcon filled={isFavorite(item)} />
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-sm text-gray-700">{item.meaning}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {!search4Loading && letterSearch && search4Results.length === 0 && letterPosition && (
+                                            <div className="mt-4 text-center text-gray-600 py-4">
+                                                <p>"{letterSearch}" සඳහා ප්‍රතිඵල හමු නොවීය</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
-                                <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-orange-500">
-                                    <h4 className="text-xl font-bold text-orange-900 mb-4">🔎 ඕනෑම තැනකින් සොයන්න</h4>
-                                    <input
-                                        type="text"
-                                        value={search3Term}
-                                        onChange={(e) => setSearch3Term(e.target.value)}
-                                        placeholder="වචනයක් හෝ අර්ථයක් ඇතුළත් කරන්න..."
-                                        className="w-full px-4 py-3 border-2 border-orange-200 rounded-xl focus:outline-none focus:border-orange-500"
-                                    />
-                                    <p className="text-xs text-gray-600 mt-2">සියලු database වලින් සොයනවා (English සමඟ)</p>
-                                    
-                                    {search3Loading && (
-                                        <div className="mt-4 flex justify-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                                <div className="mt-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6">
+                                    <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">භාවිත කරන්නේ කෙසේද?</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm mb-6">
+                                        <div className="p-4 bg-white rounded-lg shadow">
+                                            <h4 className="font-bold text-indigo-900 mb-2">🔍 වචනයෙන් සොයන්න</h4>
+                                            <p className="text-gray-700">ශබ්දකෝෂය සහ LearnX Pedia යන database දෙකෙන්ම වචනය අනුව සොයනවා. මැද පෙන්වන වචනය ප්‍රධාන ප්‍රතිඵලයයි.</p>
                                         </div>
-                                    )}
-                                    
-                                    {search3Results.length > 0 && (
-                                        <div className="mt-4">
-                                            <p className="text-sm text-orange-700 mb-3 font-semibold">ප්‍රතිඵල: {search3Results.length}</p>
-                                            <div className="max-h-80 overflow-y-auto space-y-2">
-                                                {search3Results.slice(0, 15).map((item, idx) => (
-                                                    item.source === 'Historynt' ? (
-                                                        <HistoryntResult key={`${item.source}-${item.id}-${idx}`} item={item} searchTerm={search3Term} />
-                                                    ) : (
-                                                        <RegularResult key={`${item.source}-${item.id}-${idx}`} item={item} searchTerm={search3Term} />
-                                                    )
-                                                ))}
-                                            </div>
+                                        <div className="p-4 bg-white rounded-lg shadow">
+                                            <h4 className="font-bold text-green-900 mb-2">📚 වචන වර්ග අනුව</h4>
+                                            <p className="text-gray-700">නාම පද, ක්‍රියා පද, විශේෂණ පද වැනි වචන වර්ග අනුව ශබ්දකෝෂයෙන් සොයන්න.</p>
                                         </div>
-                                    )}
+                                        <div className="p-4 bg-white rounded-lg shadow">
+                                            <h4 className="font-bold text-orange-900 mb-2">🔎 ඕනෑම තැනකින්</h4>
+                                            <p className="text-gray-700">සියලු database 5 වලින්ම (English සමඟ) වචනයේ හෝ අර්ථයේ ඕනෑම තැනක ඇති පාඨය සොයන්න.</p>
+                                        </div>
+                                        <div className="p-4 bg-white rounded-lg shadow">
+                                            <h4 className="font-bold text-blue-900 mb-2">🎯 අකුරු ස්ථානය අනුව</h4>
+                                            <p className="text-gray-700">වචනයේ විශේෂිත ස්ථානයක (උදා: 4 වන ස්ථානය) හෝ අග අකුර ලෙස යම් අකුරක් ඇති වචන සොයන්න.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                        <div className="p-4 bg-gradient-to-r from-red-100 to-pink-100 rounded-lg shadow">
+                                            <h4 className="font-bold text-red-900 mb-2">⭐ ප්‍රියතම වචන</h4>
+                                            <p className="text-gray-700">❤️ බොත්තම ඔබලා ඔබේ ප්‍රියතම වචන සුරකින්න. පසුව "ප්‍රියතම" tab එකෙන් බලන්න.</p>
+                                        </div>
+                                        <div className="p-4 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg shadow">
+                                            <h4 className="font-bold text-amber-900 mb-2">📖 අද දවසේ වචනය</h4>
+                                            <p className="text-gray-700">දිනපතා නව වචනයක් ඉගෙන ගන්න. ඔබේ vocabulary වර්ධනය කරන්න!</p>
+                                        </div>
+                                        <div className="p-4 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-lg shadow">
+                                            <h4 className="font-bold text-purple-900 mb-2">🌓 Dark Mode</h4>
+                                            <p className="text-gray-700">රාත්‍රියේ කියවීමට පහසුවක්. ඉහළ දකුණේ 🌙 බොත්තම ඔබන්න.</p>
+                                        </div>
+                                        <div className="p-4 bg-gradient-to-r from-teal-100 to-cyan-100 rounded-lg shadow">
+                                            <h4 className="font-bold text-teal-900 mb-2">💾 Auto Save</h4>
+                                            <p className="text-gray-700">සියලු settings සහ favorites browser එකේ save වෙනවා. Browser වහලත් නැතිවෙන්නේ නැහැ!</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="mt-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6">
-                                <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">භාවිත කරන්නේ කෙසේද?</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
-                                    <div className="p-4 bg-white rounded-lg shadow">
-                                        <h4 className="font-bold text-indigo-900 mb-2">🔍 වචනයෙන් සොයන්න</h4>
-                                        <p className="text-gray-700">ශබ්දකෝෂය සහ LearnX Pedia යන database දෙකෙන්ම වචනය අනුව සොයනවා. මැද පෙන්වන වචනය ප්‍රධාන ප්‍රතිඵලයයි.</p>
-                                    </div>
-                                    <div className="p-4 bg-white rounded-lg shadow">
-                                        <h4 className="font-bold text-green-900 mb-2">📚 වචන වර්ග අනුව</h4>
-                                        <p className="text-gray-700">නාම පද, ක්‍රියා පද, විශේෂණ පද වැනි වචන වර්ග අනුව ශබ්දකෝෂයෙන් සොයන්න.</p>
-                                    </div>
-                                    <div className="p-4 bg-white rounded-lg shadow">
-                                        <h4 className="font-bold text-orange-900 mb-2">🔎 ඕනෑම තැනකින්</h4>
-                                        <p className="text-gray-700">සියලු database 5 වලින්ම (English සමඟ) වචනයේ හෝ අර්ථයේ ඕනෑම තැනක ඇති පාඨය සොයන්න.</p>
-                                    </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                    <div className="p-4 bg-gradient-to-r from-red-100 to-pink-100 rounded-lg shadow">
-                                        <h4 className="font-bold text-red-900 mb-2">⭐ ප්‍රියතම වචන</h4>
-                                        <p className="text-gray-700">❤️ බොත්තම ඔබලා ඔබේ ප්‍රියතම වචන සුරකින්න. පසුව "ප්‍රියතම" tab එකෙන් බලන්න.</p>
-                                    </div>
-                                    <div className="p-4 bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg shadow">
-                                        <h4 className="font-bold text-amber-900 mb-2">📖 අද දවසේ වචනය</h4>
-                                        <p className="text-gray-700">දිනපතා නව වචනයක් ඉගෙන ගන්න. ඔබේ vocabulary වර්ධනය කරන්න!</p>
-                                    </div>
-                                    <div className="p-4 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-lg shadow">
-                                        <h4 className="font-bold text-purple-900 mb-2">🌓 Dark Mode</h4>
-                                        <p className="text-gray-700">රාත්‍රියේ කියවීමට පහසුවක්. ඉහළ දකුණේ 🌙 බොත්තම ඔබන්න.</p>
-                                    </div>
-                                    <div className="p-4 bg-gradient-to-r from-teal-100 to-cyan-100 rounded-lg shadow">
-                                        <h4 className="font-bold text-teal-900 mb-2">💾 Auto Save</h4>
-                                        <p className="text-gray-700">සියලු settings සහ favorites browser එකේ save වෙනවා. Browser වහලත් නැතිවෙන්නේ නැහැ!</p>
-                                    </div>
-                                </div>
+                            <div className="text-center py-6 bg-gray-100 border-t">
+                                <p className="text-gray-600 text-sm">Copyright © Amila Udawattha</p>
+                                <p className="text-gray-500 text-xs mt-1">සියලු විශේෂාංග සහිතව - v2.0</p>
                             </div>
-                        </div>
-
-                        <div className="text-center py-6 bg-gray-100 border-t">
-                            <p className="text-gray-600 text-sm">Copyright © Amila Udawattha</p>
-                            <p className="text-gray-500 text-xs mt-1">සියලු විශේෂාංග සහිතව - v2.0</p>
                         </div>
                     </div>
                 </div>
-            </div>
-        );
-    }
+            );
+        }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-</script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
