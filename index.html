@@ -19,6 +19,7 @@ body{font-family:'Noto Serif Sinhala',serif}.gradient-bg{background:linear-gradi
 const {useState,useEffect,useRef}=React;
 const SB_URL='https://uqgzlaxsnknheoerbfus.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxZ3psYXhzbmtuaGVvZXJiZnVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM5MjM2MTUsImV4cCI6MjA3OTI4MzYxNX0.IYWZ7ukx8J-GJMWy7cMk2BWnmzJmJjjE93yEmJie7nQ';
+
 const WORD_TYPES = [
   {label: 'නාම පද', search: '(නාම පදයකි.)'},
   {label: 'ක්‍රියා පද', search: '(ක්‍රියා පදයකි.)'},
@@ -36,39 +37,512 @@ const WORD_TYPES = [
   {label: 'තොවිල්', search: '(තොවිල්)'},
   {label: 'නිපාත පද', search: '(නිපාත.)'}
 ];
-const TBL_COLORS={'sinhala_words':{bg:'bg-blue-100',text:'text-blue-800',label:'ශබ්දකෝෂය'},'learnX pedia':{bg:'bg-green-100',text:'text-green-800',label:'LearnX'},'helavisithuru':{bg:'bg-purple-100',text:'text-purple-800',label:'හෙළ විසිතුරු'},'Historynt':{bg:'bg-orange-100',text:'text-orange-800',label:'ඉතිහාසය'},'english_dictionary':{bg:'bg-pink-100',text:'text-pink-800',label:'English'}};
-const TBL_COLS={'sinhala_words':{word:'word',meaning:'meaning'},'learnX pedia':{word:'word',meaning:'meaning'},'helavisithuru':{word:'word',meaning:'meaning'},'Historynt':{word:'title',meaning:'content'},'english_dictionary':{word:'word',meaning:'meaning'}};
+
+const TBL_COLORS={
+  'sinhala_words':{bg:'bg-blue-100',text:'text-blue-800',label:'ශබ්දකෝෂය'},
+  'learnX pedia':{bg:'bg-green-100',text:'text-green-800',label:'LearnX'},
+  'helavisithuru':{bg:'bg-purple-100',text:'text-purple-800',label:'හෙළ විසිතුරු'},
+  'Historynt':{bg:'bg-orange-100',text:'text-orange-800',label:'ඉතිහාසය'},
+  'english_dictionary':{bg:'bg-pink-100',text:'text-pink-800',label:'English'},
+  'classic_l':{bg:'bg-teal-100',text:'text-teal-800',label:'සම්භාව්‍ය'}
+};
+
+const TBL_COLS={
+  'sinhala_words':{word:'word',meaning:'meaning'},
+  'learnX pedia':{word:'word',meaning:'meaning'},
+  'helavisithuru':{word:'word',meaning:'meaning'},
+  'Historynt':{word:'title',meaning:'content'},
+  'english_dictionary':{word:'word',meaning:'meaning'},
+  'classic_l':{word:'book',meaning:'content'}
+};
+
 const SearchIcon=()=><svg className="w-6 h-6"fill="none"stroke="currentColor"viewBox="0 0 24 24"><path strokeLinecap="round"strokeLinejoin="round"strokeWidth={2}d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>;
 const ChevronDownIcon=()=><svg className="w-5 h-5"fill="none"stroke="currentColor"viewBox="0 0 24 24"><path strokeLinecap="round"strokeLinejoin="round"strokeWidth={2}d="M19 9l-7 7-7-7"/></svg>;
 const HeartIcon=({filled})=><svg className="w-6 h-6"fill={filled?"currentColor":"none"}stroke="currentColor"viewBox="0 0 24 24"><path strokeLinecap="round"strokeLinejoin="round"strokeWidth={2}d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>;
 const MoonIcon=()=><svg className="w-6 h-6"fill="none"stroke="currentColor"viewBox="0 0 24 24"><path strokeLinecap="round"strokeLinejoin="round"strokeWidth={2}d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>;
 const SunIcon=()=><svg className="w-6 h-6"fill="none"stroke="currentColor"viewBox="0 0 24 24"><path strokeLinecap="round"strokeLinejoin="round"strokeWidth={2}d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>;
-const TableBadge=({source})=>{const c=TBL_COLORS[source]||{bg:'bg-gray-100',text:'text-gray-800',label:source};return<span className={`table-badge ${c.bg} ${c.text}`}>{c.label}</span>};
-const getGraphemeCount=(str)=>{if(!str)return 0;try{const segmenter=new Intl.Segmenter('si',{granularity:'grapheme'});return[...segmenter.segment(str)].length}catch(e){return str.length}};
-const isSinhala=(str)=>{if(!str)return false;const sinhalaRange=/[\u0D80-\u0DFF]/;return sinhalaRange.test(str)};
+
+const TableBadge=({source})=>{
+  const c=TBL_COLORS[source]||{bg:'bg-gray-100',text:'text-gray-800',label:source};
+  return<span className={`table-badge ${c.bg} ${c.text}`}>{c.label}</span>
+};
+
+const getGraphemeCount=(str)=>{
+  if(!str)return 0;
+  try{
+    const segmenter=new Intl.Segmenter('si',{granularity:'grapheme'});
+    return[...segmenter.segment(str)].length
+  }catch(e){
+    return str.length
+  }
+};
+
+const isSinhala=(str)=>{
+  if(!str)return false;
+  const sinhalaRange=/[\u0D80-\u0DFF]/;
+  return sinhalaRange.test(str)
+};
+
 function App(){
-const[s1Term,setS1Term]=useState('');const[s1Results,setS1Results]=useState([]);const[s1Loading,setS1Loading]=useState(false);const[selectedIdx,setSelectedIdx]=useState(-1);const[selType,setSelType]=useState('');const[s2Results,setS2Results]=useState([]);const[s2Loading,setS2Loading]=useState(false);const[showDD,setShowDD]=useState(false);const[s3Term,setS3Term]=useState('');const[s3Results,setS3Results]=useState([]);const[s3Loading,setS3Loading]=useState(false);const[letterPos,setLetterPos]=useState('1');const[letterSrch,setLetterSrch]=useState('');const[s4Results,setS4Results]=useState([]);const[s4Loading,setS4Loading]=useState(false);const[showPosDD,setShowPosDD]=useState(false);const[letterCnt,setLetterCnt]=useState('');const[s5Results,setS5Results]=useState([]);const[s5Loading,setS5Loading]=useState(false);const[modalOpen,setModalOpen]=useState(false);const[modalContent,setModalContent]=useState({title:'',content:''});const[favs,setFavs]=useState([]);const[showFavs,setShowFavs]=useState(false);const[darkMode,setDarkMode]=useState(false);const[wod,setWod]=useState(null);const[notif,setNotif]=useState('');const[wCounts,setWCounts]=useState({'sinhala_words':0,'learnX pedia':0,'helavisithuru':0,'Historynt':0,'english_dictionary':0});const ddRef=useRef(null);const resRef=useRef(null);const posDDRef=useRef(null);
-useEffect(()=>{try{const sf=localStorage.getItem('sinhala-favorites');if(sf)setFavs(JSON.parse(sf))}catch(e){}try{const sdm=localStorage.getItem('sinhala-darkMode');if(sdm){const isDark=JSON.parse(sdm);setDarkMode(isDark);if(isDark)document.body.classList.add('dark-mode')}}catch(e){}loadWOD();loadCounts()},[]);
-const loadCounts=async()=>{const tbls=['sinhala_words','learnX pedia','helavisithuru','Historynt','english_dictionary'];const cnts={};for(const t of tbls){try{const r=await fetch(`${SB_URL}/rest/v1/${encodeURIComponent(t)}?select=id&limit=1`,{method:'HEAD',headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Prefer':'count=exact'}});const cr=r.headers.get('content-range');if(cr){const m=cr.match(/\/(\d+)$/);if(m)cnts[t]=parseInt(m[1])}}catch(e){cnts[t]=0}}setWCounts(cnts)};
-const loadWOD=()=>{try{const today=new Date().toISOString().split('T')[0];const sw=localStorage.getItem('sinhala-wordOfDay');if(sw){const w=JSON.parse(sw);if(w.date===today){setWod(w.word);return}}const ro=Math.floor(Math.random()*1000);fetch(`${SB_URL}/rest/v1/sinhala_words?select=id,word,meaning&limit=1&offset=${ro}`,{headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}}).then(r=>r.json()).then(d=>{if(d.length>0){const nw={...d[0],source:'sinhala_words',date:today};setWod(nw);localStorage.setItem('sinhala-wordOfDay',JSON.stringify(nw))}}).catch(e=>{})}catch(e){}};
-const toggleFav=item=>{const ik=`${item.source}-${item.id}`;let nf;if(favs.some(f=>`${f.source}-${f.id}`===ik)){nf=favs.filter(f=>`${f.source}-${f.id}`!==ik);showNotif('ප්‍රියතමයන්ගෙන් ඉවත් කරන ලදී')}else{nf=[...favs,item];showNotif('ප්‍රියතමයන්ට එක් කරන ලදී ⭐')}setFavs(nf);localStorage.setItem('sinhala-favorites',JSON.stringify(nf))};
+const[s1Term,setS1Term]=useState('');
+const[s1Results,setS1Results]=useState([]);
+const[s1Loading,setS1Loading]=useState(false);
+const[selectedIdx,setSelectedIdx]=useState(-1);
+const[selType,setSelType]=useState('');
+const[s2Results,setS2Results]=useState([]);
+const[s2Loading,setS2Loading]=useState(false);
+const[showDD,setShowDD]=useState(false);
+const[s3Term,setS3Term]=useState('');
+const[s3Results,setS3Results]=useState([]);
+const[s3Loading,setS3Loading]=useState(false);
+const[letterPos,setLetterPos]=useState('1');
+const[letterSrch,setLetterSrch]=useState('');
+const[s4Results,setS4Results]=useState([]);
+const[s4Loading,setS4Loading]=useState(false);
+const[showPosDD,setShowPosDD]=useState(false);
+const[letterCnt,setLetterCnt]=useState('');
+const[s5Results,setS5Results]=useState([]);
+const[s5Loading,setS5Loading]=useState(false);
+const[modalOpen,setModalOpen]=useState(false);
+const[modalContent,setModalContent]=useState({title:'',content:''});
+const[favs,setFavs]=useState([]);
+const[showFavs,setShowFavs]=useState(false);
+const[darkMode,setDarkMode]=useState(false);
+const[wod,setWod]=useState(null);
+const[notif,setNotif]=useState('');
+const[wCounts,setWCounts]=useState({
+  'sinhala_words':0,
+  'learnX pedia':0,
+  'helavisithuru':0,
+  'Historynt':0,
+  'english_dictionary':0,
+  'classic_l':0
+});
+
+const ddRef=useRef(null);
+const resRef=useRef(null);
+const posDDRef=useRef(null);
+
+useEffect(()=>{
+  try{
+    const sf=localStorage.getItem('sinhala-favorites');
+    if(sf)setFavs(JSON.parse(sf))
+  }catch(e){}
+  try{
+    const sdm=localStorage.getItem('sinhala-darkMode');
+    if(sdm){
+      const isDark=JSON.parse(sdm);
+      setDarkMode(isDark);
+      if(isDark)document.body.classList.add('dark-mode')
+    }
+  }catch(e){}
+  loadWOD();
+  loadCounts()
+},[]);
+
+const loadCounts=async()=>{
+  const tbls=['sinhala_words','learnX pedia','helavisithuru','Historynt','english_dictionary','classic_l'];
+  const cnts={};
+  for(const t of tbls){
+    try{
+      const r=await fetch(`${SB_URL}/rest/v1/${encodeURIComponent(t)}?select=id&limit=1`,{
+        method:'HEAD',
+        headers:{
+          'apikey':SB_KEY,
+          'Authorization':`Bearer ${SB_KEY}`,
+          'Prefer':'count=exact'
+        }
+      });
+      const cr=r.headers.get('content-range');
+      if(cr){
+        const m=cr.match(/\/(\d+)$/);
+        if(m)cnts[t]=parseInt(m[1])
+      }
+    }catch(e){
+      cnts[t]=0
+    }
+  }
+  setWCounts(cnts)
+};
+
+const loadWOD=()=>{
+  try{
+    const today=new Date().toISOString().split('T')[0];
+    const sw=localStorage.getItem('sinhala-wordOfDay');
+    if(sw){
+      const w=JSON.parse(sw);
+      if(w.date===today){
+        setWod(w.word);
+        return
+      }
+    }
+    const ro=Math.floor(Math.random()*1000);
+    fetch(`${SB_URL}/rest/v1/sinhala_words?select=id,word,meaning&limit=1&offset=${ro}`,{
+      headers:{
+        'apikey':SB_KEY,
+        'Authorization':`Bearer ${SB_KEY}`
+      }
+    })
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.length>0){
+        const nw={...d[0],source:'sinhala_words',date:today};
+        setWod(nw);
+        localStorage.setItem('sinhala-wordOfDay',JSON.stringify(nw))
+      }
+    })
+    .catch(e=>{})
+  }catch(e){}
+};
+
+const toggleFav=item=>{
+  const ik=`${item.source}-${item.id}`;
+  let nf;
+  if(favs.some(f=>`${f.source}-${f.id}`===ik)){
+    nf=favs.filter(f=>`${f.source}-${f.id}`!==ik);
+    showNotif('ප්‍රියතමයන්ගෙන් ඉවත් කරන ලදී')
+  }else{
+    nf=[...favs,item];
+    showNotif('ප්‍රියතමයන්ට එක් කරන ලදී ⭐')
+  }
+  setFavs(nf);
+  localStorage.setItem('sinhala-favorites',JSON.stringify(nf))
+};
+
 const isFav=item=>favs.some(f=>`${f.source}-${f.id}`===`${item.source}-${item.id}`);
-const toggleDark=()=>{const nm=!darkMode;setDarkMode(nm);document.body.classList.toggle('dark-mode');localStorage.setItem('sinhala-darkMode',JSON.stringify(nm));showNotif(nm?'🌙 අඳුරු ආකාරය සක්‍රීයයි':'☀️ දීප්ත ආකාරය සක්‍රීයයි')};
-const showNotif=m=>{setNotif(m);setTimeout(()=>setNotif(''),3000)};
-const srchTbl=async(tbl,term,type='word')=>{try{const c=TBL_COLS[tbl];if(!c)return[];let url;if(type==='word')url=`${SB_URL}/rest/v1/${encodeURIComponent(tbl)}?select=id,${c.word},${c.meaning}&${c.word}=ilike.*${encodeURIComponent(term)}*&limit=200&order=${c.word}.asc`;else url=`${SB_URL}/rest/v1/${encodeURIComponent(tbl)}?select=id,${c.word},${c.meaning}&or=(${c.word}.ilike.*${encodeURIComponent(term)}*,${c.meaning}.ilike.*${encodeURIComponent(term)}*)&limit=200&order=${c.word}.asc`;const r=await fetch(url,{headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}});if(r.ok){const d=await r.json();const res=[];const sl=term.toLowerCase();d.forEach(i=>{const wv=i[c.word];const mv=i[c.meaning];if(!wv||!mv)return;if(wv.includes(',')){const ws=wv.split(',').map(w=>w.trim());const mw=ws.filter(w=>w.toLowerCase().startsWith(sl));if(mw.length>0)res.push({id:i.id,word:wv,meaning:mv,source:tbl,matchedWords:mw})}else{let si=false;if(type==='word'){if(wv.toLowerCase().startsWith(sl))si=true}else si=true;if(si)res.push({id:i.id,word:wv,meaning:mv,source:tbl})}});return res}return[]}catch(e){return[]}};
-const doS1=async t=>{if(t.length<2){setS1Results([]);setSelectedIdx(-1);return}setS1Loading(true);try{const[r1,r2]=await Promise.all([srchTbl('sinhala_words',t,'word'),srchTbl('learnX pedia',t,'word')]);const all=[...r1,...r2];all.sort((a,b)=>a.word.localeCompare(b.word,'si'));setS1Results(all);const emi=all.findIndex(i=>i.word.toLowerCase()===t.toLowerCase());if(emi!==-1)setSelectedIdx(emi);else if(all.length>0)setSelectedIdx(0)}catch(e){}finally{setS1Loading(false)}};
-const doS2=async ts=>{if(!ts)return;setS2Loading(true);try{const r=await fetch(`${SB_URL}/rest/v1/sinhala_words?select=id,word,meaning&meaning=ilike.*${encodeURIComponent(ts)}*&limit=100&order=word.asc`,{headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}});if(r.ok){const d=await r.json();setS2Results(d.map(i=>({...i,source:'sinhala_words'})))}}catch(e){}finally{setS2Loading(false)}};
-const doS3=async t=>{if(t.length<2){setS3Results([]);return}setS3Loading(true);try{const[r1,r2,r3,r4,r5]=await Promise.all([srchTbl('sinhala_words',t,'any'),srchTbl('learnX pedia',t,'any'),srchTbl('helavisithuru',t,'any'),srchTbl('Historynt',t,'any'),srchTbl('english_dictionary',t,'any')]);const all=[...r1,...r2,...r3,...r4,...r5];all.sort((a,b)=>a.word.localeCompare(b.word,'si'));setS3Results(all)}catch(e){}finally{setS3Loading(false)}};
-const srchByPos=async(tbl,ltr,pos)=>{try{const c=TBL_COLS[tbl];if(!c)return[];const r=await fetch(`${SB_URL}/rest/v1/${encodeURIComponent(tbl)}?select=id,${c.word},${c.meaning}&limit=5000&order=${c.word}.asc`,{headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}});if(r.ok){const d=await r.json();const res=[];d.forEach(i=>{const wv=i[c.word];const mv=i[c.meaning];if(!wv||!mv)return;if(wv.includes(',')){const ws=wv.split(',').map(w=>w.trim());const mw=ws.filter(w=>{if(pos==='අග අකුර')return w.endsWith(ltr);const p=parseInt(pos);if(isNaN(p))return false;return w.substring(p-1).startsWith(ltr)});if(mw.length>0)res.push({id:i.id,word:wv,meaning:mv,source:tbl,matchedWords:mw})}else{let m=false;if(pos==='අග අකුර')m=wv.endsWith(ltr);else{const p=parseInt(pos);if(!isNaN(p))m=wv.substring(p-1).startsWith(ltr)}if(m)res.push({id:i.id,word:wv,meaning:mv,source:tbl})}});return res}return[]}catch(e){return[]}};
-const doS4=async()=>{if(!letterSrch){setS4Results([]);return}setS4Loading(true);try{const[r1,r2,r3,r4]=await Promise.all([srchByPos('sinhala_words',letterSrch,letterPos),srchByPos('learnX pedia',letterSrch,letterPos),srchByPos('helavisithuru',letterSrch,letterPos),srchByPos('english_dictionary',letterSrch,letterPos)]);const all=[...r1,...r2,...r3,...r4];all.sort((a,b)=>a.word.localeCompare(b.word,'si'));setS4Results(all)}catch(e){}finally{setS4Loading(false)}};
-const srchByCnt=async(tbl,cnt)=>{try{const c=TBL_COLS[tbl];if(!c)return[];const r=await fetch(`${SB_URL}/rest/v1/${encodeURIComponent(tbl)}?select=id,${c.word},${c.meaning}&limit=5000&order=${c.word}.asc`,{headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}});if(r.ok){const d=await r.json();const res=[];d.forEach(i=>{const wv=i[c.word];const mv=i[c.meaning];if(!wv||!mv)return;if(wv.includes(',')){const ws=wv.split(',').map(w=>w.trim());const mw=ws.filter(w=>{const isSi=isSinhala(w);const wLen=isSi?getGraphemeCount(w):w.length;return wLen===cnt});if(mw.length>0)res.push({id:i.id,word:wv,meaning:mv,source:tbl,matchedWords:mw})}else{const isSi=isSinhala(wv);const wLen=isSi?getGraphemeCount(wv):wv.length;if(wLen===cnt)res.push({id:i.id,word:wv,meaning:mv,source:tbl})}});return res}return[]}catch(e){return[]}};
-const doS5=async()=>{if(!letterCnt){setS5Results([]);return}const cnt=parseInt(letterCnt);if(isNaN(cnt)||cnt<1){setS5Results([]);return}setS5Loading(true);try{const[r1,r2,r3,r4]=await Promise.all([srchByCnt('sinhala_words',cnt),srchByCnt('learnX pedia',cnt),srchByCnt('helavisithuru',cnt),srchByCnt('english_dictionary',cnt)]);const sinhalaResults=[...r1,...r2,...r3];const englishResults=[...r4];sinhalaResults.sort((a,b)=>a.word.localeCompare(b.word,'si'));englishResults.sort((a,b)=>a.word.localeCompare(b.word));const all=[...sinhalaResults,...englishResults];setS5Results(all)}catch(e){}finally{setS5Loading(false)}};
-useEffect(()=>{const t=setTimeout(()=>{if(s1Term&&s1Term.length>=2)doS1(s1Term);else{setS1Results([]);setSelectedIdx(-1)}},300);return()=>clearTimeout(t)},[s1Term]);
-useEffect(()=>{const t=setTimeout(()=>{if(s3Term&&s3Term.length>=2)doS3(s3Term);else setS3Results([])},300);return()=>clearTimeout(t)},[s3Term]);
-useEffect(()=>{if(selectedIdx>=0&&resRef.current){const el=resRef.current.children[selectedIdx];if(el)el.scrollIntoView({behavior:'smooth',block:'center'})}},[selectedIdx]);
-const handleTypeSel=t=>{setSelType(t.label);setShowDD(false);doS2(t.search)};
-useEffect(()=>{const hco=e=>{if(ddRef.current&&!ddRef.current.contains(e.target))setShowDD(false);if(posDDRef.current&&!posDDRef.current.contains(e.target))setShowPosDD(false)};document.addEventListener('mousedown',hco);return()=>document.removeEventListener('mousedown',hco)},[]);
-const hlWord=(txt,st)=>{if(!st||!txt)return txt;if(txt.includes(',')){const ws=txt.split(',').map(w=>w.trim());return ws.map((w,i)=>{const im=w.toLowerCase().startsWith(st.toLowerCase());return<span key={i}>{i>0&&', '}<span style={im?{color:'#1e40af',fontWeight:'bold'}:{}}>{w}</span></span>})}const rx=new RegExp(`(${st})`,'gi');const pts=txt.split(rx);return pts.map((p,i)=>p.toLowerCase()===st.toLowerCase()?<span key={i}style={{color:'#1e40af'}}>{p}</span>:<span key={i}>{p}</span>)};
+
+const toggleDark=()=>{
+  const nm=!darkMode;
+  setDarkMode(nm);
+  document.body.classList.toggle('dark-mode');
+  localStorage.setItem('sinhala-darkMode',JSON.stringify(nm));
+  showNotif(nm?'🌙 අඳුරු ආකාරය සක්‍රීයයි':'☀️ දීප්ත ආකාරය සක්‍රීයයි')
+};
+
+const showNotif=m=>{
+  setNotif(m);
+  setTimeout(()=>setNotif(''),3000)
+};
+
+const srchTbl=async(tbl,term,type='word')=>{
+  try{
+    const c=TBL_COLS[tbl];
+    if(!c)return[];
+    
+    let url;
+    if(type==='word'){
+      url=`${SB_URL}/rest/v1/${encodeURIComponent(tbl)}?select=id,${c.word},${c.meaning}&${c.word}=ilike.*${encodeURIComponent(term)}*&limit=200&order=${c.word}.asc`
+    }else{
+      url=`${SB_URL}/rest/v1/${encodeURIComponent(tbl)}?select=id,${c.word},${c.meaning}&or=(${c.word}.ilike.*${encodeURIComponent(term)}*,${c.meaning}.ilike.*${encodeURIComponent(term)}*)&limit=200&order=${c.word}.asc`
+    }
+    
+    const r=await fetch(url,{
+      headers:{
+        'apikey':SB_KEY,
+        'Authorization':`Bearer ${SB_KEY}`
+      }
+    });
+    
+    if(r.ok){
+      const d=await r.json();
+      const res=[];
+      const sl=term.toLowerCase();
+      
+      d.forEach(i=>{
+        const wv=i[c.word];
+        const mv=i[c.meaning];
+        if(!wv||!mv)return;
+        
+        if(wv.includes(',')){
+          const ws=wv.split(',').map(w=>w.trim());
+          const mw=ws.filter(w=>w.toLowerCase().startsWith(sl));
+          if(mw.length>0){
+            res.push({id:i.id,word:wv,meaning:mv,source:tbl,matchedWords:mw})
+          }
+        }else{
+          let si=false;
+          if(type==='word'){
+            if(wv.toLowerCase().startsWith(sl))si=true
+          }else{
+            si=true
+          }
+          if(si)res.push({id:i.id,word:wv,meaning:mv,source:tbl})
+        }
+      });
+      return res
+    }
+    return[]
+  }catch(e){
+    return[]
+  }
+};
+
+const doS1=async t=>{
+  if(t.length<2){
+    setS1Results([]);
+    setSelectedIdx(-1);
+    return
+  }
+  setS1Loading(true);
+  try{
+    const[r1,r2]=await Promise.all([
+      srchTbl('sinhala_words',t,'word'),
+      srchTbl('learnX pedia',t,'word')
+    ]);
+    const all=[...r1,...r2];
+    all.sort((a,b)=>a.word.localeCompare(b.word,'si'));
+    setS1Results(all);
+    
+    const emi=all.findIndex(i=>i.word.toLowerCase()===t.toLowerCase());
+    if(emi!==-1)setSelectedIdx(emi);
+    else if(all.length>0)setSelectedIdx(0)
+  }catch(e){}
+  finally{setS1Loading(false)}
+};
+
+const doS2=async ts=>{
+  if(!ts)return;
+  setS2Loading(true);
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/sinhala_words?select=id,word,meaning&meaning=ilike.*${encodeURIComponent(ts)}*&limit=100&order=word.asc`,{
+      headers:{
+        'apikey':SB_KEY,
+        'Authorization':`Bearer ${SB_KEY}`
+      }
+    });
+    if(r.ok){
+      const d=await r.json();
+      setS2Results(d.map(i=>({...i,source:'sinhala_words'})))
+    }
+  }catch(e){}
+  finally{setS2Loading(false)}
+};
+
+const doS3=async t=>{
+  if(t.length<2){
+    setS3Results([]);
+    return
+  }
+  setS3Loading(true);
+  try{
+    const[r1,r2,r3,r4,r5,r6]=await Promise.all([
+      srchTbl('sinhala_words',t,'any'),
+      srchTbl('learnX pedia',t,'any'),
+      srchTbl('helavisithuru',t,'any'),
+      srchTbl('Historynt',t,'any'),
+      srchTbl('english_dictionary',t,'any'),
+      srchTbl('classic_l',t,'any')
+    ]);
+    const all=[...r1,...r2,...r3,...r4,...r5,...r6];
+    all.sort((a,b)=>a.word.localeCompare(b.word,'si'));
+    setS3Results(all)
+  }catch(e){}
+  finally{setS3Loading(false)}
+};
+
+const srchByPos=async(tbl,ltr,pos)=>{
+  try{
+    const c=TBL_COLS[tbl];
+    if(!c)return[];
+    
+    const r=await fetch(`${SB_URL}/rest/v1/${encodeURIComponent(tbl)}?select=id,${c.word},${c.meaning}&limit=5000&order=${c.word}.asc`,{
+      headers:{
+        'apikey':SB_KEY,
+        'Authorization':`Bearer ${SB_KEY}`
+      }
+    });
+    
+    if(r.ok){
+      const d=await r.json();
+      const res=[];
+      
+      d.forEach(i=>{
+        const wv=i[c.word];
+        const mv=i[c.meaning];
+        if(!wv||!mv)return;
+        
+        if(wv.includes(',')){
+          const ws=wv.split(',').map(w=>w.trim());
+          const mw=ws.filter(w=>{
+            if(pos==='අග අකුර')return w.endsWith(ltr);
+            const p=parseInt(pos);
+            if(isNaN(p))return false;
+            return w.substring(p-1).startsWith(ltr)
+          });
+          if(mw.length>0){
+            res.push({id:i.id,word:wv,meaning:mv,source:tbl,matchedWords:mw})
+          }
+        }else{
+          let m=false;
+          if(pos==='අග අකුර'){
+            m=wv.endsWith(ltr)
+          }else{
+            const p=parseInt(pos);
+            if(!isNaN(p))m=wv.substring(p-1).startsWith(ltr)
+          }
+          if(m)res.push({id:i.id,word:wv,meaning:mv,source:tbl})
+        }
+      });
+      return res
+    }
+    return[]
+  }catch(e){
+    return[]
+  }
+};
+
+const doS4=async()=>{
+  if(!letterSrch){
+    setS4Results([]);
+    return
+  }
+  setS4Loading(true);
+  try{
+    const[r1,r2,r3,r4,r5]=await Promise.all([
+      srchByPos('sinhala_words',letterSrch,letterPos),
+      srchByPos('learnX pedia',letterSrch,letterPos),
+      srchByPos('helavisithuru',letterSrch,letterPos),
+      srchByPos('english_dictionary',letterSrch,letterPos),
+      srchByPos('classic_l',letterSrch,letterPos)
+    ]);
+    const all=[...r1,...r2,...r3,...r4,...r5];
+    all.sort((a,b)=>a.word.localeCompare(b.word,'si'));
+    setS4Results(all)
+  }catch(e){}
+  finally{setS4Loading(false)}
+};
+
+const srchByCnt=async(tbl,cnt)=>{
+  try{
+    const c=TBL_COLS[tbl];
+    if(!c)return[];
+    
+    const r=await fetch(`${SB_URL}/rest/v1/${encodeURIComponent(tbl)}?select=id,${c.word},${c.meaning}&limit=5000&order=${c.word}.asc`,{
+      headers:{
+        'apikey':SB_KEY,
+        'Authorization':`Bearer ${SB_KEY}`
+      }
+    });
+    
+    if(r.ok){
+      const d=await r.json();
+      const res=[];
+      
+      d.forEach(i=>{
+        const wv=i[c.word];
+        const mv=i[c.meaning];
+        if(!wv||!mv)return;
+        
+        if(wv.includes(',')){
+          const ws=wv.split(',').map(w=>w.trim());
+          const mw=ws.filter(w=>{
+            const isSi=isSinhala(w);
+            const wLen=isSi?getGraphemeCount(w):w.length;
+            return wLen===cnt
+          });
+          if(mw.length>0){
+            res.push({id:i.id,word:wv,meaning:mv,source:tbl,matchedWords:mw})
+          }
+        }else{
+          const isSi=isSinhala(wv);
+          const wLen=isSi?getGraphemeCount(wv):wv.length;
+          if(wLen===cnt)res.push({id:i.id,word:wv,meaning:mv,source:tbl})
+        }
+      });
+      return res
+    }
+    return[]
+  }catch(e){
+    return[]
+  }
+};
+
+const doS5=async()=>{
+  if(!letterCnt){
+    setS5Results([]);
+    return
+  }
+  const cnt=parseInt(letterCnt);
+  if(isNaN(cnt)||cnt<1){
+    setS5Results([]);
+    return
+  }
+  setS5Loading(true);
+  try{
+    const[r1,r2,r3,r4,r5]=await Promise.all([
+      srchByCnt('sinhala_words',cnt),
+      srchByCnt('learnX pedia',cnt),
+      srchByCnt('helavisithuru',cnt),
+      srchByCnt('english_dictionary',cnt),
+      srchByCnt('classic_l',cnt)
+    ]);
+    const sinhalaResults=[...r1,...r2,...r3,...r5];
+    const englishResults=[...r4];
+    
+    sinhalaResults.sort((a,b)=>a.word.localeCompare(b.word,'si'));
+    englishResults.sort((a,b)=>a.word.localeCompare(b.word));
+    
+    const all=[...sinhalaResults,...englishResults];
+    setS5Results(all)
+  }catch(e){}
+  finally{setS5Loading(false)}
+};
+
+useEffect(()=>{
+  const t=setTimeout(()=>{
+    if(s1Term&&s1Term.length>=2)doS1(s1Term);
+    else{
+      setS1Results([]);
+      setSelectedIdx(-1)
+    }
+  },300);
+  return()=>clearTimeout(t)
+},[s1Term]);
+
+useEffect(()=>{
+  const t=setTimeout(()=>{
+    if(s3Term&&s3Term.length>=2)doS3(s3Term);
+    else setS3Results([])
+  },300);
+  return()=>clearTimeout(t)
+},[s3Term]);
+
+useEffect(()=>{
+  if(selectedIdx>=0&&resRef.current){
+    const el=resRef.current.children[selectedIdx];
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'})
+  }
+},[selectedIdx]);
+
+const handleTypeSel=t=>{
+  setSelType(t.label);
+  setShowDD(false);
+  doS2(t.search)
+};
+
+useEffect(()=>{
+  const hco=e=>{
+    if(ddRef.current&&!ddRef.current.contains(e.target))setShowDD(false);
+    if(posDDRef.current&&!posDDRef.current.contains(e.target))setShowPosDD(false)
+  };
+  document.addEventListener('mousedown',hco);
+  return()=>document.removeEventListener('mousedown',hco)
+},[]);
+
+const hlWord=(txt,st)=>{
+  if(!st||!txt)return txt;
+  if(txt.includes(',')){
+    const ws=txt.split(',').map(w=>w.trim());
+    return ws.map((w,i)=>{
+      const im=w.toLowerCase().startsWith(st.toLowerCase());
+      return<span key={i}>{i>0&&', '}<span style={im?{color:'#1e40af',fontWeight:'bold'}:{}}>{w}</span></span>
+    })
+  }
+  const rx=new RegExp(`(${st})`,'gi');
+  const pts=txt.split(rx);
+  return pts.map((p,i)=>p.toLowerCase()===st.toLowerCase()?<span key={i}style={{color:'#1e40af'}}>{p}</span>:<span key={i}>{p}</span>)
+};
+
 const extrSents=(cnt,st,mx=3)=>{if(!cnt||!st)return null;const cc=cnt.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();const ss=cc.split(/[.!?]+/).map(s=>s.trim()).filter(s=>s.length>0);const sl=st.toLowerCase();const rs=ss.filter(s=>s.toLowerCase().includes(sl));return rs.slice(0,mx)};
 const HistRes=({item,searchTerm})=>{const rs=extrSents(item.meaning,searchTerm);const hrm=()=>{const cc=item.meaning.replace(/<br\s*\/?>/gi,'\n').replace(/<p>/gi,'\n\n').replace(/<\/p>/gi,'').replace(/<[^>]*>/g,'').replace(/\n{3,}/g,'\n\n').trim();setModalContent({title:item.word,content:cc});setModalOpen(true)};return(<div className="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500"><div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><p className="font-bold text-orange-900 text-lg">{item.word}</p><TableBadge source={item.source}/></div><button onClick={()=>toggleFav(item)}className={`favorite-btn ${isFav(item)?'active':'text-gray-400 hover:text-red-500'}`}><HeartIcon filled={isFav(item)}/></button></div>{rs&&rs.length>0?(<div><ul className="text-sm text-gray-700 space-y-1 mb-3 list-disc list-inside">{rs.map((s,idx)=>(<li key={idx}className="leading-relaxed">{s.length>150?s.substring(0,150)+'...':s}</li>))}</ul><button onClick={hrm}className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-800 hover:underline font-semibold text-sm cursor-pointer"><span>📖</span><span>සම්පූර්ණ ලිපිය කියවන්න</span><svg className="w-4 h-4"fill="none"stroke="currentColor"viewBox="0 0 24 24"><path strokeLinecap="round"strokeLinejoin="round"strokeWidth={2}d="M9 5l7 7-7 7"/></svg></button></div>):(<div><p className="text-sm text-gray-700 mb-2">{item.meaning.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').substring(0,200)}...</p><button onClick={hrm}className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-800 hover:underline font-semibold text-sm cursor-pointer"><span>📖</span><span>සම්පූර්ණ ලිපිය කියවන්න</span></button></div>)}</div>)};
 const RegRes=({item,searchTerm})=>{const hlt=(txt,tm)=>{if(!tm||!txt)return txt;const ws=txt.split(/(\s+)/);return ws.map((w,idx)=>{if(w.toLowerCase().includes(tm.toLowerCase())&&w.trim()){return<span key={idx}className="bg-yellow-200 font-bold text-amber-900"style={{padding:'0 2px',borderRadius:'3px'}}>{w}</span>}return w})};return(<div className="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500"><div className="flex items-center justify-between mb-1"><div className="flex items-center gap-2"><p className="font-bold text-orange-900">{item.word}</p><TableBadge source={item.source}/></div><button onClick={()=>toggleFav(item)}className={`favorite-btn ${isFav(item)?'active':'text-gray-400 hover:text-red-500'}`}><HeartIcon filled={isFav(item)}/></button></div><p className="text-sm text-gray-700">{hlt(item.meaning,searchTerm)}</p></div>)};
